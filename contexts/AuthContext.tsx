@@ -63,7 +63,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const login = useCallback(async (data: LoginRequest) => {
     try {
       const response = await apiService.login(data);
-      console.log(response?.data,"responseresponseresponseresponseresponseresponse")
+      // console.log(response?.data,"responseresponseresponseresponseresponseresponse")
       if (response?.data?.token) {
         await AsyncStorage.setItem('auth_token', response?.data?.token);
         
@@ -78,7 +78,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isAuthenticated: true,
         });
       }
-      console.log(authState,"authStateauthStateauthStateauthStateauthState")
       return response;
     } catch (error) {
       console.error('Login error:', error);

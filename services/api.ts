@@ -4,6 +4,37 @@ import { XrayAnalysis, AnalysisResult } from '@/types/xray';
 
 const BASE_URL = "http://localhost:5000/api";
 
+// const BASE_URL = "https://mediviewai-backend.onrender.com/api";
+
+
+
+const SUPPORTED_LANGUAGES: any = [
+  { code: "en", name: "English", flag: "🇺🇸" },
+  { code: "hi", name: "Hindi", flag: "🇮🇳" },
+  { code: "te", name: "Telugu", flag: "🇮🇳" },
+  { code: "ta", name: "Tamil", flag: "🇮🇳" },
+  { code: "kn", name: "Kannada", flag: "🇮🇳" },
+  { code: "ml", name: "Malayalam", flag: "🇮🇳" },
+  { code: "gu", name: "Gujarati", flag: "🇮🇳" },
+  { code: "mr", name: "Marathi", flag: "🇮🇳" },
+  { code: "bn", name: "Bengali", flag: "🇮🇳" },
+
+  // keep the global ones you had before
+  { code: "es", name: "Spanish", flag: "🇪🇸" },
+  { code: "fr", name: "French", flag: "🇫🇷" },
+  { code: "de", name: "German", flag: "🇩🇪" },
+  { code: "it", name: "Italian", flag: "🇮🇹" },
+  { code: "pt", name: "Portuguese", flag: "🇵🇹" },
+  { code: "ru", name: "Russian", flag: "🇷🇺" },
+  { code: "zh", name: "Chinese", flag: "🇨🇳" },
+  { code: "ja", name: "Japanese", flag: "🇯🇵" },
+  { code: "ko", name: "Korean", flag: "🇰🇷" },
+  { code: "ar", name: "Arabic", flag: "🇸🇦" },
+  { code: "tr", name: "Turkish", flag: "🇹🇷" },
+  { code: "nl", name: "Dutch", flag: "🇳🇱" },
+  { code: "sv", name: "Swedish", flag: "🇸🇪" },
+];
+
 
 class ApiService {
   private async getAuthHeaders() {
@@ -49,6 +80,34 @@ class ApiService {
     return response.json();
   }
 
+
+  async translateText(text: string, targetLanguage: string): Promise<string> {
+    try {
+      const langObj = SUPPORTED_LANGUAGES.find((lang: any) => lang.code === targetLanguage);
+      if (!langObj) throw new Error("Unsupported language");
+
+      const response = await fetch(`${BASE_URL}/xray/translate`, {
+        method: "POST",
+        headers: {
+          ...(await this.getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text, languageName: langObj.code }), // use code
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to translate");
+      }
+
+      return response.json();
+    } catch (err) {
+      console.error("Translation error:", err);
+      return text;
+    }
+  }
+
+
+
   // User APIs
   async getProfile(): Promise<User> {
     const response = await fetch(`${BASE_URL}/user/profile`, {
@@ -66,8 +125,45 @@ class ApiService {
     return response.json();
   }
 
-  async getHistory(): Promise<XrayAnalysis[]> {
-    const response = await fetch(`${BASE_URL}/history/get-history`, {
+  async getHistory(
+    page = 1,
+    limit = 7
+  ): Promise<{ history: XrayAnalysis[]; totalPages: number }> {
+    try {
+      // console.log(`[apiService] Fetching history - page: ${page}, limit: ${limit}`);
+
+      const response = await fetch(
+        `${BASE_URL}/history/get-history?page=${page}&limit=${limit}`,
+        {
+          headers: await this.getAuthHeaders(),
+        }
+      );
+
+      // console.log('[apiService] Raw response:', response);
+
+      const data = await response.json();
+      // console.log('[apiService] Parsed JSON:', data);
+
+      // Ensure backend returns { history, totalPages }
+      const historyData = data.history || [];
+      const totalPages = data.totalPages || 1;
+
+      // console.log(`[apiService] Returning history length: ${historyData.length}, totalPages: ${totalPages}`);
+
+      return {
+        history: historyData,
+        totalPages,
+      };
+    } catch (error) {
+      console.error('[apiService] Error fetching history:', error);
+      return { history: [], totalPages: 1 };
+    }
+  }
+
+
+  async clearHistory(): Promise<{ msg: string }> {
+    const response = await fetch(`${BASE_URL}/history/clear-history`, {
+      method: "PUT", // safer than GET, since we’re updating
       headers: await this.getAuthHeaders(),
     });
     return response.json();
@@ -88,6 +184,38 @@ class ApiService {
 
     return response.json();
   }
+
+  // apiService.ts
+  async getCloudTTS(text: string, lang: string) {
+    try {
+      const res = await fetch(`${BASE_URL}/xray/tts`, {
+        method: "POST",
+        headers: {
+          ...(await this.getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text, lang }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`TTS request failed: ${res.status}`);
+      }
+
+      const { audioBase64, mimeType } = await res.json();
+
+      if (!audioBase64) {
+        throw new Error("No audioBase64 in TTS response");
+      }
+
+      // Build playable URI
+      const audioUri = `data:${mimeType};base64,${audioBase64}`;
+      return audioUri; // ✅ works in <audio src> (web) or expo-av
+    } catch (err) {
+      console.error("❌ Error fetching TTS:", err);
+      throw err;
+    }
+  }
+
 
 
   // async uploadDicom(file: any): Promise<AnalysisResult> {

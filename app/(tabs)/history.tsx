@@ -1,29 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, FileText } from 'lucide-react-native';
 import { XrayAnalysis } from '@/types/xray';
 import { apiService } from '@/services/api';
 import Colors from '@/constants/colors';
+import { useFocusEffect } from 'expo-router';
 
 export default function HistoryScreen() {
   const [history, setHistory] = useState<XrayAnalysis[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      // Reset state when screen focuses
+      setHistory([]);
+      setPage(1);
+      setHasMore(true);
+      loadHistory(1);
+    }, [])
+  );
 
-  const loadHistory = async () => {
+  const loadHistory = async (pageToLoad: number) => {
+    if (!hasMore) return;
+    setLoading(true);
     try {
-      const data = await apiService.getHistory();
-      console.log("API history response:", data); // 🔎 Debug API response
-      setHistory(data || []);
+      const data = await apiService.getHistory(pageToLoad, 7); // pass page and limit
+      setHistory((prev) => [...prev, ...data.history]);
+      setHasMore(pageToLoad < data.totalPages);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadHistory(nextPage);
+    }
+  };
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={{ padding: 16 }}>
+        <Text style={{ textAlign: 'center', color: Colors.text.secondary }}>Loading more...</Text>
+      </View>
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -46,31 +74,20 @@ export default function HistoryScreen() {
         </View>
         <View style={styles.resultsContainer}>
           {item?.analysisResult ? (
-            (Array.isArray(item.analysisResult)
-              ? item.analysisResult
-              : [item.analysisResult]
-            ).map((res, index) => (
-              <Text key={index} style={styles.conditionName}>{res}</Text>
-            ))
+            (Array.isArray(item.analysisResult) ? item.analysisResult : [item.analysisResult]).map(
+              (res, index) => (
+                <Text key={index} style={styles.conditionName}>
+                  {res}
+                </Text>
+              )
+            )
           ) : (
             <Text style={styles.conditionName}>No results available</Text>
           )}
         </View>
-
       </View>
     </TouchableOpacity>
   );
-
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContent}>
-          <Text style={styles.loadingText}>Loading history...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,7 +96,7 @@ export default function HistoryScreen() {
         <Text style={styles.subtitle}>Your previous X-ray analyses</Text>
       </View>
 
-      {history.length === 0 ? (
+      {history.length === 0 && !loading ? (
         <View style={styles.emptyState}>
           <FileText size={64} color={Colors.text.light} />
           <Text style={styles.emptyTitle}>No analyses yet</Text>
@@ -94,6 +111,9 @@ export default function HistoryScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
         />
       )}
     </SafeAreaView>

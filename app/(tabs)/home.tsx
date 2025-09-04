@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import ChatScreen from '../../utils/chat';
+import { X, MessageCircle } from 'lucide-react-native';
+import { Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,21 +11,57 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, Upload, FileImage, AlertTriangle, Zap } from 'lucide-react-native';
+import { Camera, Upload, FileImage, AlertTriangle, Zap, Volume2, Languages, StopCircle, FileText } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Speech from 'expo-speech';
+import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import Colors from '@/constants/colors';
 import Markdown from 'react-native-markdown-display';
-
+import { styles } from "../../styles/homeStyles"
+import { useSpeech } from '@/utils/ttsService';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const { isSpeaking, isLoading1, toggleSpeak } = useSpeech();
+  const [language, setLanguage] = useState('en'); // default English
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [chatVisible, setChatVisible] = useState(false);
+
+  const subtitles = [
+    "Your health buddy 🤝",
+    "Here to explain in simple words ✨",
+    "Always by your side 💙",
+    "Guiding you through your reports 📋",
+  ];
+  const [index, setIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        setIndex((prev) => (prev + 1) % subtitles.length);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [fadeAnim]);
 
 
   const pickImageFromGallery = async () => {
@@ -37,7 +76,7 @@ export default function HomeScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-      base64: true, // ✅ get base64 string
+      base64: true,
     });
 
     if (!result.canceled) {
@@ -57,7 +96,7 @@ export default function HomeScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-      base64: true, // ✅ get base64 string
+      base64: true,
     });
 
     if (!result.canceled) {
@@ -72,10 +111,10 @@ export default function HomeScreen() {
 
     setIsAnalyzing(true);
     try {
-      const base64 = selectedImage.split(',')[1]; // strip data:image/...;base64, prefix
-
+      const base64 = selectedImage.split(',')[1];
       const response = await apiService.analyzeXray(base64);
-      setResult(response.data);
+      if (response?.data) setResult(response.data);
+      else if (response?.msg) setResult(response.msg);
     } catch (error) {
       console.error('Analysis error:', error);
       Alert.alert('Error', 'Failed to analyze the image. Please try again.');
@@ -84,7 +123,28 @@ export default function HomeScreen() {
     }
   };
 
+  const clearImage = () => {
+    setSelectedImage(null);
+    setResult(null);
+    setLanguage('en');
+    setIsAnalyzing(false);
+  }
 
+  const translateResult = async (targetLang: string) => {
+    if (!result) return;
+    setIsTranslating(true);
+    try {
+      const response: any = await apiService.translateText(result, targetLang);
+      // console.log(response, "responseresponseresponseresponseresponseresponseresponseresponseresponseresponseresponseresponseresponseresponseresponse")
+      setResult(response?.data);
+      setLanguage(targetLang);
+    } catch (error) {
+      console.error("Translation error:", error);
+      Alert.alert("Error", "Translation failed.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -92,9 +152,11 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>MediView AI</Text>
-          <Text style={styles.subtitle}>Hello, {user?.name} 👋</Text>
-          <Text style={styles.subtitle}>X-ray Analysis Assistant</Text>
+          <Animated.Text style={[styles.subtitle, { opacity: fadeAnim }]}>
+            {subtitles[index]}
+          </Animated.Text>
         </View>
+
 
         {/* Disclaimer */}
         <View style={styles.disclaimerCard}>
@@ -113,9 +175,9 @@ export default function HomeScreen() {
               <Image source={{ uri: selectedImage }} style={styles.previewImage} />
               <TouchableOpacity
                 style={styles.changeImageButton}
-                onPress={() => setSelectedImage(null)}
+                onPress={clearImage}
               >
-                <Text style={styles.changeImageText}>Change Image</Text>
+                <Text style={styles.changeImageText}>Clear Image</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -131,6 +193,14 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          <View style={styles.supportedFormats}>
+            <FileText color="#8E8E93" size={16} />
+            <Text style={styles.supportedText}>
+              Supports X-rays, MRIs, CT scans, lab reports, and other medical documents
+            </Text>
+          </View>
+
         </View>
 
         {/* Analyze Button */}
@@ -152,22 +222,77 @@ export default function HomeScreen() {
         )}
 
         {/* Result Section */}
-
-
         {result && (
           <View style={styles.resultContainer}>
             <View style={styles.resultHeader}>
               <Zap size={20} color={Colors.accent} />
               <Text style={styles.resultTitle}>Analysis Result</Text>
+
+              <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
+                {/* 🔊 Speak */}
+                <TouchableOpacity
+                  onPress={() => toggleSpeak(result, language)}
+                  disabled={isLoading1 || isTranslating}
+                >
+                  {isLoading1 ? (
+                    <ActivityIndicator size="small" color="#666" />
+                  ) : isSpeaking ? (
+                    <StopCircle size={20} color="red" />
+                  ) : (
+                    <Volume2 size={20} color="blue" />
+                  )}
+                </TouchableOpacity>
+
+
+
+                <View style={styles.iconButton}>
+                  {isTranslating ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  ) : (
+                    <Languages size={20} color={Colors.primary} />
+                  )}
+                </View>
+
+
+                {/* Language Picker (moved inline with icons) */}
+                <Picker
+                  selectedValue={language}
+                  style={[styles.languagePicker, { width: 120 }]}
+                  onValueChange={(value: any) => translateResult(value)}
+                  enabled={!isTranslating && !isLoading1 && !isSpeaking}
+                >
+                  <Picker.Item label="English" value="en" />
+                  <Picker.Item label="Hindi" value="hi" />
+                  <Picker.Item label="Telugu" value="te" />
+                  <Picker.Item label="Tamil" value="ta" />
+                  <Picker.Item label="Kannada" value="kn" />
+                  <Picker.Item label="Malayalam" value="ml" />
+                  <Picker.Item label="Gujarati" value="gu" />
+                  <Picker.Item label="Marathi" value="mr" />
+                  <Picker.Item label="Bengali" value="bn" />
+                  <Picker.Item label="Spanish" value="es" />
+                  <Picker.Item label="French" value="fr" />
+                  <Picker.Item label="German" value="de" />
+                  <Picker.Item label="Portuguese" value="pt" />
+                  <Picker.Item label="Russian" value="ru" />
+                  <Picker.Item label="Chinese" value="zh" />
+                  <Picker.Item label="Japanese" value="ja" />
+                  <Picker.Item label="Korean" value="ko" />
+                  <Picker.Item label="Arabic" value="ar" />
+                  <Picker.Item label="Turkish" value="tr" />
+                  <Picker.Item label="Dutch" value="nl" />
+                  <Picker.Item label="Swedish" value="sv" />
+                </Picker>
+              </View>
             </View>
+
             <Markdown style={{ body: { color: '#000', fontSize: 16 } }}>
               {result}
             </Markdown>
           </View>
         )}
 
-
-        {/* Features Section (from new) */}
+        {/* Features Section */}
         <View style={styles.featuresSection}>
           <Text style={styles.featuresTitle}>Features</Text>
           <View style={styles.featuresList}>
@@ -201,89 +326,31 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Floating Chat Window */}
+      {chatVisible && (
+        <View style={styles.chatWindow}>
+          <View style={styles.chatHeader}>
+            <Text style={styles.chatTitle}>AI Assistant</Text>
+            <TouchableOpacity onPress={() => setChatVisible(false)}>
+              <X size={20} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <ChatScreen />
+        </View>
+      )}
+
+      {/* Floating Chat Button */}
+      {!chatVisible && (
+        <TouchableOpacity
+          style={styles.chatButton}
+          onPress={() => setChatVisible(true)}
+        >
+          <MessageCircle size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background.primary },
-  scrollContent: { padding: 20 },
-  header: { alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 32, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 8 },
-  subtitle: { fontSize: 16, color: Colors.text.secondary, textAlign: 'center' },
 
-  disclaimerCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fef3c7',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 30,
-    alignItems: 'flex-start',
-  },
-  disclaimerText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: '#92400e',
-    lineHeight: 20,
-  },
-
-  uploadSection: { marginBottom: 30 },
-  sectionTitle: { fontSize: 20, fontWeight: '600', color: Colors.text.primary, marginBottom: 20 },
-  uploadOptions: { gap: 16 },
-  uploadButton: {
-    backgroundColor: '#ffffff',
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderStyle: 'dashed',
-  },
-  uploadButtonText: { fontSize: 16, fontWeight: '600', color: Colors.primary, marginTop: 12 },
-
-  imagePreview: { alignItems: 'center' },
-  previewImage: { width: 300, height: 300, borderRadius: 16, marginBottom: 16 },
-  changeImageButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-  },
-  changeImageText: { color: '#64748b', fontWeight: '500' },
-
-  analyzeButton: {
-    backgroundColor: Colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-    borderRadius: 12,
-    gap: 8,
-  },
-  analyzeButtonDisabled: { backgroundColor: '#94a3b8' },
-  analyzeButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
-
-  resultContainer: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  resultHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  resultTitle: { fontSize: 18, fontWeight: '600', color: Colors.text.primary },
-  resultText: { fontSize: 14, color: Colors.text.secondary, lineHeight: 20 },
-
-  featuresSection: { marginTop: 8 },
-  featuresTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 16,
-  },
-  featuresList: { gap: 16 },
-  featureItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  featureContent: { flex: 1 },
-  featureTitle: { fontSize: 16, fontWeight: '600', color: Colors.text.primary, marginBottom: 4 },
-  featureDescription: { fontSize: 14, color: Colors.text.secondary, lineHeight: 18 },
-});

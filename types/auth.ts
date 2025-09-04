@@ -4,6 +4,7 @@ export interface User {
   email: string;
   dob: string;
   createdAt: string;
+  history: any
 }
 
 export interface AuthState {

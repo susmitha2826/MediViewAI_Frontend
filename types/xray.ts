@@ -11,5 +11,6 @@ export interface AnalysisResult {
   status: string;
   Message: string;
   data: string;
-  analysisResult:any
+  analysisResult:any;
+  msg: any
 }

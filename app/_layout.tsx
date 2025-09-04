@@ -27,16 +27,13 @@ useEffect(() => {
   const inTabsGroup = segments[0] === "(tabs)";
 
   if (!isAuthenticated && !inAuthGroup) {
-    console.log("redirect → login");
     router.replace("/(auth)/login");
   } else if (isAuthenticated && inAuthGroup) {
-    console.log("redirect → home (from auth)");
     router.replace("/(tabs)/home");
   } else if (isAuthenticated && !inTabsGroup && segments.length <= 1) {
-    console.log("redirect → home (from root)");
     router.replace("/(tabs)/home");
   }
-}, [isAuthenticated, isLoading, segments]); // ✅ no "router" here
+}, [isAuthenticated, isLoading, segments]);
 
 
   if (isLoading) {
@@ -44,7 +41,7 @@ useEffect(() => {
   }
 
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerBackTitle: "Back", headerShown: false }}>
       <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)/verify-otp" options={{ headerShown: false }} />
