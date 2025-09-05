@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
-import Colors from '@/constants/colors';
+import Colors from '@/constants/darkColors';
 
 export default function IndexScreen() {
   const { isAuthenticated, isLoading } = useAuth();

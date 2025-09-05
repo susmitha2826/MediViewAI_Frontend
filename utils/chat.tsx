@@ -3,7 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Keyboa
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Send, Bot, User } from 'lucide-react-native';
 import { apiService } from '@/services/api';
-import Colors from '@/constants/colors';
+import { useTheme } from "@/contexts/ThemeContext";
+import LightColors from "@/constants/colors";
+import DarkColors from "@/constants/darkColors";
+
 import Markdown from 'react-native-markdown-display';
 
 interface Message {
@@ -14,6 +17,9 @@ interface Message {
 }
 
 export default function ChatScreen() {
+  const { darkMode } = useTheme();
+  const Colors = darkMode ? DarkColors : LightColors;
+  const styles = createStyles(Colors);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -167,7 +173,7 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: typeof LightColors | typeof DarkColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background.primary,
@@ -178,8 +184,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 10, // only horizontal
+    paddingVertical: 12,   // reduce vertical padding
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: 12,

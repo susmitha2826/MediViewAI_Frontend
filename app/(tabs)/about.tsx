@@ -1,22 +1,25 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, Shield, Zap, Mail, Globe, Users } from 'lucide-react-native';
+import { Heart, Shield, Zap, Users } from 'lucide-react-native';
 import { Button } from '@/components/Button';
-import Colors from '@/constants/colors';
+import { useTheme } from "@/contexts/ThemeContext";
+import LightColors from "@/constants/colors";
+import DarkColors from "@/constants/darkColors";
 
 export default function AboutScreen() {
-  const openEmail = () => {
-    Linking.openURL('mailto:support@xrayai.com');
-  };
+  const { darkMode } = useTheme();
+  const Colors = darkMode ? DarkColors : LightColors;
 
-  const openWebsite = () => {
-    Linking.openURL('http://localhost:8081');
-  };
+  const styles = createStyles(Colors);
+
+  const openEmail = () => Linking.openURL('mailto:support@xrayai.com');
+  const openWebsite = () => Linking.openURL('http://localhost:8081');
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.logo}>
             <Zap size={32} color={Colors.text.white} />
@@ -25,16 +28,18 @@ export default function AboutScreen() {
           <Text style={styles.version}>Version 1.0.0</Text>
         </View>
 
+        {/* About */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About Our App</Text>
           <Text style={styles.description}>
             MIDVIEW AI is a cutting-edge mobile application that leverages artificial intelligence 
             to analyze X-ray images and provide detailed medical insights. Our advanced machine 
-            learning algorithms help healthcare Ai Models understand X-ray results 
+            learning algorithms help healthcare AI models understand X-ray results 
             with greater clarity and accuracy.
           </Text>
         </View>
 
+        {/* Key Features */}
         <View style={styles.featuresSection}>
           <Text style={styles.sectionTitle}>Key Features</Text>
           <View style={styles.featuresList}>
@@ -68,6 +73,7 @@ export default function AboutScreen() {
           </View>
         </View>
 
+        {/* Disclaimer */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Important Notice</Text>
           <Text style={styles.disclaimer}>
@@ -77,6 +83,7 @@ export default function AboutScreen() {
           </Text>
         </View>
 
+        {/* Contact */}
         <View style={styles.contactSection}>
           <Text style={styles.sectionTitle}>Contact Us</Text>
           <View style={styles.contactButtons}>
@@ -95,6 +102,7 @@ export default function AboutScreen() {
           </View>
         </View>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <View style={styles.footerIcon}>
             <Heart size={16} color={Colors.error} />
@@ -108,108 +116,53 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  content: {
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  appName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.text.primary,
-    marginBottom: 4,
-  },
-  version: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-    lineHeight: 24,
-  },
-  disclaimer: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-    lineHeight: 20,
-    fontStyle: 'italic',
-    backgroundColor: Colors.background.secondary,
-    padding: 16,
-    borderRadius: 12,
-  },
-  featuresSection: {
-    marginBottom: 24,
-  },
-  featuresList: {
-    gap: 16,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginBottom: 4,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-    lineHeight: 18,
-  },
-  contactSection: {
-    marginBottom: 32,
-  },
-  contactButtons: {
-    gap: 12,
-  },
-  contactButton: {
-    width: '100%',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  footerIcon: {
-    opacity: 0.8,
-  },
-  footerText: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-  },
-});
+// Themed stylesheet function
+const createStyles = (Colors: typeof LightColors | typeof DarkColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: Colors.background.primary },
+    content: { padding: 20 },
+    header: { alignItems: 'center', marginBottom: 32 },
+    logo: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: Colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    appName: { fontSize: 28, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 },
+    version: { fontSize: 16, color: Colors.text.secondary },
+    section: { marginBottom: 24 },
+    sectionTitle: { fontSize: 20, fontWeight: '600', color: Colors.text.primary, marginBottom: 12 },
+    description: { fontSize: 16, color: Colors.text.secondary, lineHeight: 24 },
+    disclaimer: {
+      fontSize: 14,
+      color: Colors.text.secondary,
+      lineHeight: 20,
+      fontStyle: 'italic',
+      backgroundColor: Colors.background.secondary,
+      padding: 16,
+      borderRadius: 12,
+    },
+    featuresSection: { marginBottom: 24 },
+    featuresList: { rowGap: 16 },
+    featureItem: { flexDirection: 'row', alignItems: 'flex-start', columnGap: 12 },
+    featureContent: { flex: 1 },
+    featureTitle: { fontSize: 16, fontWeight: '600', color: Colors.text.primary, marginBottom: 4 },
+    featureDescription: { fontSize: 14, color: Colors.text.secondary, lineHeight: 18 },
+    contactSection: { marginBottom: 32 },
+    contactButtons: { rowGap: 12 },
+    contactButton: { width: '100%' },
+    footer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      columnGap: 8,
+      paddingTop: 20,
+      borderTopWidth: 1,
+      borderTopColor: Colors.border,
+    },
+    footerIcon: { opacity: 0.8 },
+    footerText: { fontSize: 14, color: Colors.text.secondary },
+  });

@@ -1,13 +1,18 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, FileText } from 'lucide-react-native';
 import { XrayAnalysis } from '@/types/xray';
 import { apiService } from '@/services/api';
-import Colors from '@/constants/colors';
+import { useTheme } from "@/contexts/ThemeContext";
+import LightColors from "@/constants/colors";
+import DarkColors from "@/constants/darkColors";
 import { useFocusEffect } from 'expo-router';
 
 export default function HistoryScreen() {
+  const { darkMode } = useTheme();
+  const Colors = darkMode ? DarkColors : LightColors;
+
   const [history, setHistory] = useState<XrayAnalysis[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -15,7 +20,6 @@ export default function HistoryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Reset state when screen focuses
       setHistory([]);
       setPage(1);
       setHasMore(true);
@@ -27,8 +31,12 @@ export default function HistoryScreen() {
     if (!hasMore) return;
     setLoading(true);
     try {
-      const data = await apiService.getHistory(pageToLoad, 7); // pass page and limit
-      setHistory((prev) => [...prev, ...data.history]);
+      const data = await apiService.getHistory(pageToLoad, 7);
+      setHistory((prev) => {
+        const newHistory = [...prev, ...data.history];
+        const uniqueHistory = Array.from(new Map(newHistory.map(item => [item.id, item])).values());
+        return uniqueHistory;
+      });
       setHasMore(pageToLoad < data.totalPages);
     } catch (error) {
       console.error('Error loading history:', error);
@@ -45,62 +53,70 @@ export default function HistoryScreen() {
     }
   };
 
-  const renderFooter = () => {
-    if (!loading) return null;
-    return (
-      <View style={{ padding: 16 }}>
-        <Text style={{ textAlign: 'center', color: Colors.text.secondary }}>Loading more...</Text>
-      </View>
-    );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-  };
 
   const renderHistoryItem = ({ item }: { item: XrayAnalysis }) => (
-    <TouchableOpacity style={styles.historyItem}>
-      <Image source={{ uri: item.imageUrl }} style={styles.thumbnail} />
-      <View style={styles.itemContent}>
-        <View style={styles.itemHeader}>
-          <Text style={styles.itemDate}>{formatDate(item?.timestamp)}</Text>
-          <View style={styles.dateIcon}>
-            <Calendar size={16} color={Colors.text.secondary} />
-          </View>
+    <TouchableOpacity style={{
+      backgroundColor: Colors.background.secondary,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    }}>
+      <Image
+        source={{ uri: item.imageUrl }}
+        style={{
+          width: 60,
+          height: 60,
+          borderRadius: 8,
+          backgroundColor: Colors.background.tertiary,
+          marginRight: 12,
+        }}
+      />
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.text.primary }}>
+            {formatDate(item?.timestamp)}
+          </Text>
+          <Calendar size={16} color={Colors.text.secondary} />
         </View>
-        <View style={styles.resultsContainer}>
-          {item?.analysisResult ? (
-            (Array.isArray(item.analysisResult) ? item.analysisResult : [item.analysisResult]).map(
-              (res, index) => (
-                <Text key={index} style={styles.conditionName}>
-                  {res}
-                </Text>
-              )
-            )
-          ) : (
-            <Text style={styles.conditionName}>No results available</Text>
-          )}
+        <View style={{ gap: 4 }}>
+          {(Array.isArray(item.analysisResult) ? item.analysisResult : [item.analysisResult]).map((res, index) => (
+            <Text key={index} style={{ fontSize: 14, color: Colors.text.secondary }}>
+              {res || "No results available"}
+            </Text>
+          ))}
         </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Analysis History</Text>
-        <Text style={styles.subtitle}>Your previous X-ray analyses</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background.primary }}>
+      {/* Header */}
+      <View style={{ padding: 20, paddingBottom: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 }}>
+          Analysis History
+        </Text>
+        <Text style={{ fontSize: 16, color: Colors.text.secondary }}>
+          Your previous X-ray analyses
+        </Text>
       </View>
 
+      {/* Empty state */}
       {history.length === 0 && !loading ? (
-        <View style={styles.emptyState}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
           <FileText size={64} color={Colors.text.light} />
-          <Text style={styles.emptyTitle}>No analyses yet</Text>
-          <Text style={styles.emptyDescription}>
+          <Text style={{ fontSize: 20, fontWeight: '600', color: Colors.text.primary, marginTop: 16, marginBottom: 8 }}>
+            No analyses yet
+          </Text>
+          <Text style={{ fontSize: 16, color: Colors.text.secondary, textAlign: 'center', lineHeight: 22 }}>
             Upload your first X-ray to see analysis results here
           </Text>
         </View>
@@ -109,115 +125,19 @@ export default function HistoryScreen() {
           data={history}
           renderItem={renderHistoryItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          ListFooterComponent={renderFooter}
+          ListFooterComponent={loading ? (
+            <View style={{ padding: 16 }}>
+              <Text style={{ textAlign: 'center', color: Colors.text.secondary }}>Loading more...</Text>
+            </View>
+          ) : null}
         />
       )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background.primary,
-  },
-  header: {
-    padding: 20,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.text.primary,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyDescription: {
-    fontSize: 16,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  historyItem: {
-    backgroundColor: Colors.background.secondary,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: Colors.background.tertiary,
-    marginRight: 12,
-  },
-  itemContent: {
-    flex: 1,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  itemDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text.primary,
-  },
-  dateIcon: {
-    opacity: 0.6,
-  },
-  resultsContainer: {
-    gap: 4,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  conditionName: {
-    fontSize: 14,
-    color: Colors.text.secondary,
-  },
-  confidence: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-});
+

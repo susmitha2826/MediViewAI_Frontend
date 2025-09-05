@@ -1,45 +1,43 @@
 import { Tabs, useRouter } from "expo-router";
 import { Home, History, User, Info } from "lucide-react-native";
-import React, { useState } from "react";
+import React from "react";
 import { View, TouchableOpacity, Image, Text } from "react-native";
-import Colors from "@/constants/colors";
 import { Sun, Moon } from "lucide-react-native";
+import LightColors from "@/constants/colors";
+import DarkColors from "@/constants/darkColors";
+import { useTheme } from "@/contexts/ThemeContext";
 
 // Dummy user data (replace with AuthContext later)
 const user = {
   name: "Susmitha Gopireddy",
-  avatar: "", // leave empty to show initial
+  avatar: "",
 };
 
 export default function TabLayout() {
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
+  const theme = darkMode ? DarkColors : LightColors;
 
-  // helper: get initial from name
-  const getInitial = (name?: string) => {
-    if (!name) return "?";
-    return name.charAt(0).toUpperCase();
-  };
+  const getInitial = (name?: string) => (!name ? "?" : name.charAt(0).toUpperCase());
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.text.light,
-        headerShown: true,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.text.light,
         tabBarStyle: {
-          backgroundColor: Colors.background.primary,
-          borderTopColor: Colors.border,
+          backgroundColor: theme.background.primary,
+          borderTopColor: theme.border,
           paddingTop: 8,
           paddingBottom: 8,
           height: 60,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500",
-        },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "500" },
 
-        // 👇 Custom Header
+        // Header
+        headerShown: true,
+        headerStyle: { backgroundColor: theme.background.primary },
+        headerTitleStyle: { color: theme.text.primary },
         headerTitle: () => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Image
@@ -47,50 +45,35 @@ export default function TabLayout() {
               style={{ width: 28, height: 28, borderRadius: 6 }}
               resizeMode="contain"
             />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "600",
-                color: Colors.text.primary,
-              }}
-            >
+            <Text style={{ fontSize: 18, fontWeight: "600", color: theme.text.primary }}>
               MediView AI
             </Text>
           </View>
         ),
 
-        // 👇 Right side actions
+        // Header right: dark/light toggle + profile
         headerRight: () => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginRight: 12 }}>
-            {/* Dark/Light toggle */}
-            <TouchableOpacity onPress={() => setDarkMode(!darkMode)}>
-              {darkMode ? (
-                <Moon size={24} color="#000" />
-              ) : (
-                <Sun size={24} color="#FFA500" />
-              )}
+            <TouchableOpacity onPress={toggleDarkMode}>
+              {darkMode ? <Moon size={24} color={theme.text.primary} /> : <Sun size={24} color={theme.warning} />}
             </TouchableOpacity>
 
-            {/* Profile picture OR Initial */}
             <TouchableOpacity onPress={() => router.push("/profile")}>
-              {user?.avatar ? (
-                <Image
-                  source={{ uri: user.avatar }}
-                  style={{ width: 32, height: 32, borderRadius: 16 }}
-                />
+              {user.avatar ? (
+                <Image source={{ uri: user.avatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
               ) : (
                 <View
                   style={{
                     width: 32,
                     height: 32,
                     borderRadius: 16,
-                    backgroundColor: Colors.primary,
+                    backgroundColor: theme.primary,
                     justifyContent: "center",
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ color: "#fff", fontWeight: "600" }}>
-                    {getInitial(user?.name)}
+                  <Text style={{ color: theme.text.white, fontWeight: "600" }}>
+                    {getInitial(user.name)}
                   </Text>
                 </View>
               )}
@@ -99,34 +82,10 @@ export default function TabLayout() {
         ),
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          tabBarLabel: "Home",
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          tabBarLabel: "History",
-          tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          tabBarLabel: "Profile",
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="about"
-        options={{
-          tabBarLabel: "About",
-          tabBarIcon: ({ color, size }) => <Info color={color} size={size} />,
-        }}
-      />
+      <Tabs.Screen name="home" options={{ tabBarLabel: "Home", tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
+      <Tabs.Screen name="history" options={{ tabBarLabel: "History", tabBarIcon: ({ color, size }) => <History color={color} size={size} /> }} />
+      <Tabs.Screen name="profile" options={{ tabBarLabel: "Profile", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
+      <Tabs.Screen name="about" options={{ tabBarLabel: "About", tabBarIcon: ({ color, size }) => <Info color={color} size={size} /> }} />
     </Tabs>
   );
 }
