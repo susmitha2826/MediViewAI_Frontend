@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useAuth } from '@/contexts/AuthContext';
-import Colors from '@/constants/darkColors';
+import Colors from '@/constants/colors';
 
 export default function LoginScreen() {
   const [formData, setFormData] = useState({

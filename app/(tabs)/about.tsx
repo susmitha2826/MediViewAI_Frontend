@@ -5,7 +5,7 @@ import { Heart, Shield, Zap, Users } from 'lucide-react-native';
 import { Button } from '@/components/Button';
 import { useTheme } from "@/contexts/ThemeContext";
 import LightColors from "@/constants/colors";
-import DarkColors from "@/constants/darkColors";
+import DarkColors from "@/constants/colors";
 
 export default function AboutScreen() {
   const { darkMode } = useTheme();

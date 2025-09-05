@@ -9,10 +9,22 @@
       "distribution": "internal"
     },
     "preview": {
+      "distribution": "internal",
+      "env": {
+        "EAS_NO_BUN_FROZEN": "1"
+      }
+    },
+    "apk": {
+      "android": {
+        "buildType": "apk"
+      },
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {

@@ -2,9 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RegisterRequest, LoginRequest, VerifyOTPRequest, User } from '@/types/auth';
 import { XrayAnalysis, AnalysisResult } from '@/types/xray';
 
-// const BASE_URL = "http://localhost:5000/api";
+const BASE_URL = "http://localhost:5000/api";
 
-const BASE_URL = "https://mediviewai-backend.onrender.com/api";
+// const BASE_URL = "https://mediviewai-backend.onrender.com/api";
 
 
 
