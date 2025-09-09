@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
@@ -37,12 +37,11 @@ export default function RegisterScreen() {
         dob: formData.dob,
         password: formData.password,
       });
-      
+
       Alert.alert('Success', 'Registration successful! Please check your email for OTP.', [
         { text: 'OK', onPress: () => 
-          // router.replace(`/(auth)/verify-otp?email=${formData.email}`)
-          router.replace(`/(auth)/login?email=${formData.email}`)
-         }
+            // router.replace(`/(auth)/verify-otp?email=${formData.email}`)
+          router.replace(`/(auth)/login?email=${formData.email}`) }
       ]);
     } catch (error) {
       Alert.alert('Error', 'Registration failed. Please try again.');
@@ -53,66 +52,72 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join us to analyze your X-rays with AI</Text>
-        </View>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <Text style={styles.appName}>MediViewAI</Text>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join us to analyze your X-rays with AI</Text>
+          </View>
 
-        <View style={styles.form}>
-          <Input
-            label="Full Name"
-            value={formData.name}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-            placeholder="Enter your full name"
-          />
+          <View style={styles.formBox}>
+            <Input
+              label="Full Name"
+              value={formData.name}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
+              placeholder="Enter your full name"
+            />
 
-          <Input
-            label="Email"
-            value={formData.email}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            <Input
+              label="Email"
+              value={formData.email}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
 
-          <Input
-            label="Date of Birth"
-            value={formData.dob}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, dob: text }))}
-            placeholder="DD-MM-YYYY"
-          />
+            <Input
+              label="Date of Birth"
+              value={formData.dob}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, dob: text }))}
+              placeholder="DD-MM-YYYY"
+            />
 
-          <Input
-            label="Password"
-            value={formData.password}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
-            placeholder="Enter your password"
-            isPassword
-          />
+            <Input
+              label="Password"
+              value={formData.password}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
+              placeholder="Enter your password"
+              isPassword
+            />
 
-          <Input
-            label="Confirm Password"
-            value={formData.confirmPassword}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
-            placeholder="Confirm your password"
-            isPassword
-          />
+            <Input
+              label="Confirm Password"
+              value={formData.confirmPassword}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
+              placeholder="Confirm your password"
+              isPassword
+            />
 
-          <Button
-            title="Create Account"
-            onPress={handleRegister}
-            loading={loading}
-            style={styles.registerButton}
-          />
+            <Button
+              title="Create Account"
+              onPress={handleRegister}
+              loading={loading}
+              style={styles.loginButton}
+            />
 
-          <Button
-            title="Already have an account? Sign In"
-            onPress={() => router.replace('/(auth)/login')}
-            variant="outline"
-          />
-        </View>
-      </ScrollView>
+            <Button
+              title="Already have an account? Sign In"
+              onPress={() => router.replace('/(auth)/login')}
+              variant="outline"
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -123,27 +128,46 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.primary,
   },
   content: {
+    flexGrow: 1,
     padding: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
+  appName: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 12,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: Colors.text.primary,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.text.secondary,
     textAlign: 'center',
   },
-  form: {
-    gap: 8,
+  formBox: {
+    width: '85%',
+    maxWidth: 380,
+    padding: 20,
+    borderRadius: 12,
+    backgroundColor: Colors.background.secondary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 12,
   },
-  registerButton: {
+  loginButton: {
     marginTop: 8,
     marginBottom: 16,
   },
