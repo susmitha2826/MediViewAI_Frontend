@@ -1,7 +1,8 @@
 export interface XrayAnalysis {
   id: string;
-  imageUrl: string;
+  imageUrl: string[];
   createdAt: string;
+  imageUrls: string[];
   analysisResult: any;
   timestamp:any;
   result: Record<string, number>;
@@ -12,5 +13,5 @@ export interface AnalysisResult {
   Message: string;
   data: string;
   analysisResult:any;
-  msg: any
+  msg: any;
 }

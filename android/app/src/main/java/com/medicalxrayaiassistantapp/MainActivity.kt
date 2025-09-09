@@ -1,5 +1,5 @@
-import expo.modules.splashscreen.SplashScreenManager
 package com.medicalxrayaiassistantapp
+import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
 import android.os.Bundle

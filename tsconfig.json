@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "types": ["react", "react-native"],
+     "lib": ["es2015", "dom"], 
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",

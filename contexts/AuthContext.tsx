@@ -18,7 +18,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       const token = await AsyncStorage.getItem('auth_token');
       const userStr = await AsyncStorage.getItem('user_data');
-      
+
       if (token && userStr) {
         const user = JSON.parse(userStr);
         setAuthState({
@@ -66,13 +66,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       // console.log(response?.data,"responseresponseresponseresponseresponseresponse")
       if (response?.data?.token) {
         await AsyncStorage.setItem('auth_token', response?.data?.token);
-        
+
         // Fetch user profile
         const userProfile = await apiService.getProfile();
-        await AsyncStorage.setItem('user_data', JSON.stringify(userProfile));
-        
+
+        const { history, ...filteredProfile } = userProfile;
+        await AsyncStorage.setItem('user_data', JSON.stringify(filteredProfile));
+
         setAuthState({
-          user: userProfile,
+          user: filteredProfile,
           token: response?.data?.token,
           isLoading: false,
           isAuthenticated: true,

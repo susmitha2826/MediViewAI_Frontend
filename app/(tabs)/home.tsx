@@ -15,18 +15,21 @@ import { styles } from '@/styles/homeStyles';
 import { useTheme } from "@/contexts/ThemeContext";
 import LightColors from "@/constants/colors";
 import DarkColors from "@/constants/darkColors";
+
 export default function HomeScreen() {
   const { darkMode } = useTheme();
   const Colors = darkMode ? DarkColors : LightColors;
 
   const { user } = useAuth();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
   const { isSpeaking, isLoading1, toggleSpeak } = useSpeech();
   const [language, setLanguage] = useState('en');
   const [isTranslating, setIsTranslating] = useState(false);
   const [chatVisible, setChatVisible] = useState(false);
+  const [doctorResult, setDoctorResult] = useState<string | null>(null);
+  const [laymanResult, setLaymanResult] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
 
   const subtitles = [
     "Your health buddy 🤝",
@@ -53,18 +56,39 @@ export default function HomeScreen() {
       Alert.alert('Permission needed', 'Please grant gallery access to upload X-rays');
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
       base64: true,
     });
+
     if (!result.canceled) {
-      setSelectedImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
-      setResult(null);
+      const base64Array = result.assets.map(asset => `data:image/jpeg;base64,${asset.base64}`);
+      setSelectedImages(prev => [...prev, ...base64Array]);
+      clearResults();
     }
   };
+
+  const resetAnalysis = () => {
+    try {
+      // Stop ongoing speech
+      Speech.stop();
+    } catch (err) {
+      console.warn("Error stopping speech:", err);
+    }
+
+    // Reset all analysis-related state
+    setSelectedImages([]);
+    setDoctorResult(null);
+    setLaymanResult(null);
+    setLanguage("en");
+    setResult(null);
+  };
+
 
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -72,47 +96,69 @@ export default function HomeScreen() {
       Alert.alert('Permission needed', 'Please grant camera access to take X-ray photos');
       return;
     }
+
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
       base64: true,
     });
+
     if (!result.canceled) {
-      setSelectedImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
-      setResult(null);
+      setSelectedImages(prev => [...prev, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+      clearResults();
     }
   };
 
-  const analyzeImage = async () => {
-    if (!selectedImage) return;
+  const analyzeImages = async () => {
+    if (selectedImages.length === 0) return;
+
     setIsAnalyzing(true);
     try {
-      const base64 = selectedImage.split(',')[1];
-      const response = await apiService.analyzeXray(base64);
-      if (response?.data) setResult(response.data);
-      else if (response?.msg) setResult(response.msg);
+      const base64Array = selectedImages.map(img => img.split(',')[1]);
+      const response = await apiService.analyzeXray(base64Array);
+
+      if (response?.data) {
+        const fullResult = response.data;
+
+        // Split doctor vs layman explanations
+        const doctorMatch = fullResult.match(/Doctor-Level Explanation:(.*)Layman-Friendly Explanation:/s);
+        const laymanMatch = fullResult.match(/Layman-Friendly Explanation:(.*)/s);
+
+        setDoctorResult(doctorMatch ? doctorMatch[1].trim() : '');
+        setLaymanResult(laymanMatch ? laymanMatch[1].trim() : '');
+      } else if (response?.msg) {
+        setDoctorResult('');
+        setLaymanResult('');
+        setResult(response.msg)
+      }
     } catch (error) {
       console.error('Analysis error:', error);
-      Alert.alert('Error', 'Failed to analyze the image. Please try again.');
+      Alert.alert('Error', 'Failed to analyze the images. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const clearImage = () => {
-    setSelectedImage(null);
-    setResult(null);
+  const clearResults = () => {
+    setDoctorResult(null);
+    setLaymanResult(null);
     setLanguage('en');
-    setIsAnalyzing(false);
+    setResult(null);
   };
 
-  const translateResult = async (targetLang: string) => {
-    if (!result) return;
+  const translateLayman = async (targetLang: string) => {
+    const textToTranslate = laymanResult || result;
+    if (!textToTranslate) return; // nothing to translate
+
     setIsTranslating(true);
     try {
-      const response: any = await apiService.translateText(result, targetLang);
-      setResult(response?.data);
+      const response: any = await apiService.translateText(textToTranslate, targetLang);
+      if (laymanResult) {
+        setLaymanResult(response?.data);
+      } else {
+        setResult(response?.data);
+      }
       setLanguage(targetLang);
     } catch (error) {
       console.error("Translation error:", error);
@@ -121,6 +167,8 @@ export default function HomeScreen() {
       setIsTranslating(false);
     }
   };
+
+
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background.primary }]}>
@@ -143,42 +191,73 @@ export default function HomeScreen() {
 
         {/* Upload Section */}
         <View style={[styles.uploadSection, { backgroundColor: Colors.background.secondary }]}>
-          <Text style={[styles.sectionTitle, { color: Colors.text.primary }]}>Upload X-ray Image</Text>
+          <Text style={[styles.sectionTitle, { color: Colors.text.primary }]}>Upload X-ray Images</Text>
 
-          {selectedImage ? (
-            <View style={styles.imagePreview}>
-              <Image source={{ uri: selectedImage }} style={styles.previewImage} />
-              <TouchableOpacity style={styles.changeImageButton} onPress={clearImage}>
-                <Text style={[styles.changeImageText, { color: Colors.primary }]}>Clear Image</Text>
+          {selectedImages.length > 0 ? (
+            <ScrollView horizontal style={styles.imagePreviewContainer}>
+              {selectedImages.map((img, index) => (
+                <View key={index} style={styles.imageWrapper}>
+                  <Image source={{ uri: img }} style={styles.previewImage} />
+                  <TouchableOpacity
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(255,255,255,0.8)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => {
+                      if (!isAnalyzing) setSelectedImages(prev => prev.filter((_, i) => i !== index));
+                      else Alert.alert("Analysis in progress", "You cannot remove images while analysis is running.");
+                    }}
+                  >
+                    <Text style={{
+                      color: Colors.danger,
+                      fontWeight: 'bold',
+                      fontSize: 16,
+                      textShadowColor: '#000',
+                      textShadowOffset: { width: 0.5, height: 0.5 },
+                      textShadowRadius: 1,
+                    }}>X</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity style={[styles.addMoreButton, { backgroundColor: Colors.background.tertiary }]} onPress={pickImageFromGallery}>
+                <FileImage color={Colors.primary} size={32} />
+                <Text style={[styles.uploadButtonText, { color: Colors.text.primary }]}>Add More</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           ) : (
             <View style={styles.uploadOptions}>
               <TouchableOpacity style={[styles.uploadButton, { backgroundColor: Colors.background.tertiary }]} onPress={takePhoto}>
                 <Camera color={Colors.primary} size={32} />
                 <Text style={[styles.uploadButtonText, { color: Colors.text.primary }]}>Take Photo</Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={[styles.uploadButton, { backgroundColor: Colors.background.tertiary }]} onPress={pickImageFromGallery}>
                 <FileImage color={Colors.primary} size={32} />
                 <Text style={[styles.uploadButtonText, { color: Colors.text.primary }]}>Choose from Gallery</Text>
               </TouchableOpacity>
             </View>
           )}
-
-          <View style={styles.supportedFormats}>
-            <FileText color={Colors.text.light} size={16} />
-            <Text style={[styles.supportedText, { color: Colors.text.light }]}>
-              Supports X-rays, MRIs, CT scans, lab reports, and other medical documents
-            </Text>
-          </View>
         </View>
+        {/* New Analysis Button */}
+        {selectedImages.length > 0 && (
+          <View style={{ alignItems: "center", marginVertical: 10 }}>
+            <TouchableOpacity style={styles.changeImageButton} onPress={resetAnalysis}>
+              <Text style={styles.changeImageText}>New Analysis</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Analyze Button */}
-        {selectedImage && (
+        {selectedImages.length > 0 && (
           <TouchableOpacity
             style={[styles.analyzeButton, { backgroundColor: Colors.primary }, isAnalyzing && styles.analyzeButtonDisabled]}
-            onPress={analyzeImage}
+            onPress={analyzeImages}
             disabled={isAnalyzing}
           >
             {isAnalyzing ? (
@@ -187,41 +266,37 @@ export default function HomeScreen() {
               <Upload color={Colors.text.white} size={20} />
             )}
             <Text style={[styles.analyzeButtonText, { color: Colors.text.white }]}>
-              {isAnalyzing ? 'Analyzing...' : 'Analyze X-ray'}
+              {isAnalyzing ? 'Analyzing...' : 'Analyze X-rays'}
             </Text>
           </TouchableOpacity>
         )}
 
         {/* Result Section */}
-        {result && (
+        {(doctorResult || laymanResult || result) && (
           <View style={[styles.resultContainer, { backgroundColor: Colors.background.secondary }]}>
             <View style={styles.resultHeader}>
               <Zap size={20} color={Colors.accent} />
               <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Analysis Result</Text>
 
               <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
-                <TouchableOpacity onPress={() => toggleSpeak(result, language)} disabled={isLoading1 || isTranslating}>
-                  {isLoading1 ? (
-                    <ActivityIndicator size="small" color={Colors.text.light} />
-                  ) : isSpeaking ? (
-                    <StopCircle size={20} color={Colors.danger} />
-                  ) : (
-                    <Volume2 size={20} color={Colors.primary} />
-                  )}
+                <TouchableOpacity onPress={() => {
+                  const textToSpeak = laymanResult || result;
+                  if (textToSpeak) {
+                    toggleSpeak(textToSpeak, language);
+                  }
+                }}
+                  disabled={isLoading1 || isTranslating}>
+                  {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
                 </TouchableOpacity>
 
                 <View style={styles.iconButton}>
-                  {isTranslating ? (
-                    <ActivityIndicator size="small" color={Colors.primary} />
-                  ) : (
-                    <Languages size={20} color={Colors.primary} />
-                  )}
+                  {isTranslating ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
                 </View>
 
                 <Picker
                   selectedValue={language}
                   style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
-                  onValueChange={(value: any) => translateResult(value)}
+                  onValueChange={(value: any) => translateLayman(value)}
                   enabled={!isTranslating && !isLoading1 && !isSpeaking}
                 >
                   <Picker.Item label="English" value="en" />
@@ -250,8 +325,18 @@ export default function HomeScreen() {
             </View>
 
             <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
-              {result}
+              {doctorResult || laymanResult ? (
+                [
+                  doctorResult ? `Doctor-Level Explanation:\n${doctorResult}\n\n` : "",
+                  laymanResult ? `Layman-Friendly Explanation:\n${laymanResult}` : ""
+                ].join("")
+              ) : (
+                result ||
+                "⚠️ We couldn’t analyze this document as a valid medical report.  \n👉 Please check if the file is a clear X-ray, MRI, CT scan, ultrasound, or medical report before uploading.  If the issue continues, try again later — the server may be busy."
+              )}
             </Markdown>
+
+
           </View>
         )}
 
@@ -299,8 +384,6 @@ export default function HomeScreen() {
               <X size={20} color={Colors.text.primary} />
             </TouchableOpacity>
           </View>
-
-          {/* Make sure ChatScreen accepts Colors prop or uses theme context */}
           <ChatScreen />
         </View>
       )}

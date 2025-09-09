@@ -1,4 +1,3 @@
-// hooks/useSpeech.ts
 import { useState } from "react";
 import * as Speech from "expo-speech";
 import { Audio } from "expo-av";
@@ -8,7 +7,7 @@ export function useSpeech() {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isLoading1, setIsLoading1] = useState(false);
     const [soundObj, setSoundObj] = useState<Audio.Sound | null>(null);
-    const [cachedUrl, setCachedUrl] = useState<string | null>(null);
+    const [cachedUrls, setCachedUrls] = useState<Record<string, string>>({}); // key: `${text}_${lang}`
 
     const sanitizeForSpeech = (text: string) =>
         text.replace(/\([^)]*\)/g, "").replace(/\s{2,}/g, " ").trim();
@@ -25,11 +24,12 @@ export function useSpeech() {
     const speakCloud = async (text: string, lang: string) => {
         try {
             setIsLoading1(true);
+            const key = `${text}_${lang}`;
+            let url = cachedUrls[key];
 
-            let url = cachedUrl;
             if (!url) {
-                url = await apiService.getCloudTTS(text, lang); // 🔥 call API only once
-                setCachedUrl(url);
+                url = await apiService.getCloudTTS(text, lang);
+                setCachedUrls(prev => ({ ...prev, [key]: url }));
             }
 
             const { sound } = await Audio.Sound.createAsync({ uri: url });
@@ -51,7 +51,7 @@ export function useSpeech() {
         }
     };
 
-    const toggleSpeak = async (text: string, lang: string) => {
+    const toggleSpeak = async (text: any, lang: string) => {
         if (!text) return;
 
         if (isSpeaking) {
@@ -62,7 +62,6 @@ export function useSpeech() {
         }
 
         setIsSpeaking(true);
-
         const safeText = sanitizeForSpeech(text);
 
         // Check available voices

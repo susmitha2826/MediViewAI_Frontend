@@ -4,6 +4,37 @@ import {
 import Colors from '@/constants/darkColors';
 
 export const styles = StyleSheet.create({
+
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  imageWrapper: {
+    alignItems: 'center',
+    marginRight: 12,
+    position: 'relative',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#ff4d4f',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  addMoreButton: {
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+  },
+
+
   container: { flex: 1, backgroundColor: Colors.background.primary },
   scrollContent: { padding: 20 },
   header: { alignItems: 'center', marginBottom: 20 },
@@ -89,12 +120,17 @@ export const styles = StyleSheet.create({
   imagePreview: { alignItems: 'center' },
   previewImage: { width: 300, height: 300, borderRadius: 16, marginBottom: 16 },
   changeImageButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
+    paddingHorizontal: 12,   // smaller horizontal padding
+    paddingVertical: 6,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 20,        // rounded pill shape
+    alignSelf: "center",     // shrink to text size
   },
-  changeImageText: { color: '#64748b', fontWeight: '500' },
+
+  changeImageText: {
+    color: Colors.primary,
+    fontWeight: "600",
+  },
 
   analyzeButton: {
     backgroundColor: Colors.primary,

@@ -30,7 +30,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="myapp"/>
-        <data android:scheme="exp+medical-x-ray-ai-assistant-app"/>
       </intent-filter>
     </activity>
   </application>

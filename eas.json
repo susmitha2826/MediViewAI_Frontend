@@ -11,6 +11,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
+        "NODE_ENV": "production",
         "EAS_NO_BUN_FROZEN": "1"
       }
     },

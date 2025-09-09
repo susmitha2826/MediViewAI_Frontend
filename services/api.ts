@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RegisterRequest, LoginRequest, VerifyOTPRequest, User } from '@/types/auth';
 import { XrayAnalysis, AnalysisResult } from '@/types/xray';
 
-const BASE_URL = "http://localhost:5000/api";
+// const BASE_URL = "http://localhost:5000/api";
 
-// const BASE_URL = "https://mediviewai-backend.onrender.com/api";
+const BASE_URL = "https://mediviewai-backend.onrender.com/api";
 
+// const BASE_URL = "http://100.24.165.115:5050/api";
 
 
 const SUPPORTED_LANGUAGES: any = [
@@ -169,21 +170,23 @@ class ApiService {
     return response.json();
   }
 
-  // X-ray API
-  async analyzeXray(base64Image: string): Promise<AnalysisResult> {
-    const response = await fetch(`${BASE_URL}/xray/analyze`, {
-      method: 'POST',
-      headers: {
-        ...(await this.getAuthHeaders()), // e.g. { Authorization: "Bearer <token>", "Content-Type": "application/json" }
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        image: base64Image, // backend expects base64 string
-      }),
-    });
+// X-ray API
+async analyzeXray(base64Images: string[] | string): Promise<AnalysisResult> {
+  const imagesArray = Array.isArray(base64Images) ? base64Images : [base64Images];
 
-    return response.json();
-  }
+  const response = await fetch(`${BASE_URL}/xray/analyze`, {
+    method: 'POST',
+    headers: {
+      ...(await this.getAuthHeaders()),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      images: imagesArray, // send array to backend
+    }),
+  });
+
+  return response.json();
+}
 
   // apiService.ts
   async getCloudTTS(text: string, lang: string) {

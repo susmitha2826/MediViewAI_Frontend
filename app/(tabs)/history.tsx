@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, FileText } from 'lucide-react-native';
 import { XrayAnalysis } from '@/types/xray';
@@ -61,38 +61,44 @@ export default function HistoryScreen() {
     });
 
   const renderHistoryItem = ({ item }: { item: XrayAnalysis }) => (
-    <TouchableOpacity style={{
-      backgroundColor: Colors.background.secondary,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 12,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-    }}>
-      <Image
-        source={{ uri: item.imageUrl }}
-        style={{
-          width: 60,
-          height: 60,
-          borderRadius: 8,
-          backgroundColor: Colors.background.tertiary,
-          marginRight: 12,
-        }}
-      />
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.text.primary }}>
-            {formatDate(item?.timestamp)}
+    <TouchableOpacity
+      style={{
+        backgroundColor: Colors.background.secondary,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+      }}
+    >
+      {/* Horizontal scroll of images */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+        {item?.imageUrl?.map((url, index) => (
+          <Image
+            key={index}
+            source={{ uri: url }}
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 8,
+              backgroundColor: Colors.background.tertiary,
+              marginRight: 8,
+            }}
+          />
+        ))}
+      </ScrollView>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: Colors.text.primary }}>
+          {formatDate(item.timestamp)}
+        </Text>
+        <Calendar size={16} color={Colors.text.secondary} />
+      </View>
+
+      <View style={{ gap: 4 }}>
+        {(Array.isArray(item.analysisResult) ? item.analysisResult : [item.analysisResult]).map((res, index) => (
+          <Text key={index} style={{ fontSize: 14, color: Colors.text.secondary }}>
+            {res || "No results available"}
           </Text>
-          <Calendar size={16} color={Colors.text.secondary} />
-        </View>
-        <View style={{ gap: 4 }}>
-          {(Array.isArray(item.analysisResult) ? item.analysisResult : [item.analysisResult]).map((res, index) => (
-            <Text key={index} style={{ fontSize: 14, color: Colors.text.secondary }}>
-              {res || "No results available"}
-            </Text>
-          ))}
-        </View>
+        ))}
       </View>
     </TouchableOpacity>
   );
@@ -139,5 +145,3 @@ export default function HistoryScreen() {
     </SafeAreaView>
   );
 }
-
-

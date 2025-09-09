@@ -1,11 +1,13 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
+# npx eas build -p android --profile apk --clear-cache
 
 # bun i
 # bun --version
 #  bun expo start --web
 #  bun expo start --web --tunnel
 
++ /android
++ /ios
 
 # dependencies
 node_modules/

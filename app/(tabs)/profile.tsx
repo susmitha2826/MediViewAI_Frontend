@@ -34,7 +34,8 @@ export default function ProfileScreen() {
 
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [analyses, setAnalyses] = useState([]);
+  const [analyses, setAnalyses] = useState<any[]>([]);
+
   const [formData, setFormData] = useState({
     name: user?.name || "",
     dob: user?.dob || "",
