@@ -9,6 +9,24 @@
 + /android
 + /ios
 
+# Android
+android/
+*.apk
+*.aab
+*.keystore
+
+# iOS
+ios/
+*.xcworkspace
+*.xcodeproj
+Pods/
+
+# VS Code
+.vscode/
+
+# Netlify
+.netlify/
+
 # dependencies
 node_modules/
 .env
