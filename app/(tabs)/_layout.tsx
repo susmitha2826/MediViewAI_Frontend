@@ -6,17 +6,21 @@ import { Sun, Moon } from "lucide-react-native";
 import LightColors from "@/constants/colors";
 import DarkColors from "@/constants/darkColors";
 import { useTheme } from "@/contexts/ThemeContext";
-
-// Dummy user data (replace with AuthContext later)
-const user = {
-  name: "Susmitha Gopireddy",
-  avatar: "",
-};
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TabLayout() {
   const router = useRouter();
   const { darkMode, toggleDarkMode } = useTheme();
   const theme = darkMode ? DarkColors : LightColors;
+
+  // Get user from AuthContext
+  const { user } = useAuth();
+
+  // Fallback if user not loaded
+  const displayUser = {
+    name: user?.name || "User",
+    avatar: user?.avatar || "",
+  };
 
   const getInitial = (name?: string) => (!name ? "?" : name.charAt(0).toUpperCase());
 
@@ -34,7 +38,6 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "500" },
 
-        // Header
         headerShown: true,
         headerStyle: { backgroundColor: theme.background.primary },
         headerTitleStyle: { color: theme.text.primary },
@@ -51,7 +54,6 @@ export default function TabLayout() {
           </View>
         ),
 
-        // Header right: dark/light toggle + profile
         headerRight: () => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginRight: 12 }}>
             <TouchableOpacity onPress={toggleDarkMode}>
@@ -59,8 +61,11 @@ export default function TabLayout() {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => router.push("/profile")}>
-              {user.avatar ? (
-                <Image source={{ uri: user.avatar }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+              {displayUser.avatar ? (
+                <Image
+                  source={{ uri: displayUser.avatar }}
+                  style={{ width: 32, height: 32, borderRadius: 16 }}
+                />
               ) : (
                 <View
                   style={{
@@ -73,7 +78,7 @@ export default function TabLayout() {
                   }}
                 >
                   <Text style={{ color: theme.text.white, fontWeight: "600" }}>
-                    {getInitial(user.name)}
+                    {getInitial(displayUser.name)}
                   </Text>
                 </View>
               )}
@@ -82,10 +87,22 @@ export default function TabLayout() {
         ),
       }}
     >
-      <Tabs.Screen name="home" options={{ tabBarLabel: "Home", tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
-      <Tabs.Screen name="history" options={{ tabBarLabel: "History", tabBarIcon: ({ color, size }) => <History color={color} size={size} /> }} />
-      <Tabs.Screen name="profile" options={{ tabBarLabel: "Profile", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
-      <Tabs.Screen name="about" options={{ tabBarLabel: "About", tabBarIcon: ({ color, size }) => <Info color={color} size={size} /> }} />
+      <Tabs.Screen
+        name="home"
+        options={{ tabBarLabel: "Home", tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{ tabBarLabel: "History", tabBarIcon: ({ color, size }) => <History color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{ tabBarLabel: "Profile", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="about"
+        options={{ tabBarLabel: "About", tabBarIcon: ({ color, size }) => <Info color={color} size={size} /> }}
+      />
     </Tabs>
   );
 }

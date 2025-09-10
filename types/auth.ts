@@ -5,6 +5,7 @@ export interface User {
   dob: string;
   createdAt: string;
   history?: any[];
+  avatar?: any
 }
 
 export interface AuthState {

@@ -1,8 +1,15 @@
 import {
+  Dimensions,
   StyleSheet,
 } from 'react-native';
 import Colors from '@/constants/darkColors';
+import {
 
+  Platform,
+
+} from 'react-native';
+const isWeb = Platform.OS === 'web';
+const { width, height } = Dimensions.get('window');
 export const styles = StyleSheet.create({
 
   imagePreviewContainer: {
@@ -59,19 +66,18 @@ export const styles = StyleSheet.create({
 
   // Floating Chat Window
   chatWindow: {
-    position: "absolute",
-    bottom: 100, // sits above chat button
+    position: 'absolute',
+    bottom: 20,
     right: 20,
-    width: "90%",
-    height: "70%",
-    backgroundColor: "#fff",
+    width: isWeb ? 350 : Math.min(300, width * 0.7), // Narrower width
+    height: isWeb ? 600 : Math.min(500, height * 0.8), // Taller height
     borderRadius: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-    overflow: "hidden",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 2000,
   },
 
   chatHeader: {
