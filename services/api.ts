@@ -4,10 +4,10 @@ import { XrayAnalysis, AnalysisResult } from '@/types/xray';
 
 // const BASE_URL = "http://localhost:5000/api";
 
-const BASE_URL = "https://mediviewai-backend.onrender.com/api";
+// const BASE_URL = "https://mediviewai-backend.onrender.com/api";
 
 // const BASE_URL = "http://100.24.165.115:5050/api";
-
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const SUPPORTED_LANGUAGES: any = [
   { code: "en", name: "English", flag: "🇺🇸" },

@@ -1,5 +1,5 @@
 import ChatScreen from '../../utils/chat';
-import { X, MessageCircle, Camera, Upload, FileImage, AlertTriangle, Zap, Volume2, Languages, StopCircle, FileText } from 'lucide-react-native';
+import { X, MessageCircle, Camera, Upload, FileImage, AlertTriangle, Zap, Volume2, Languages, StopCircle, FileText, Bot } from 'lucide-react-native';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,8 +24,10 @@ export default function HomeScreen() {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { isSpeaking, isLoading1, toggleSpeak } = useSpeech();
-  const [language, setLanguage] = useState('en');
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [doctorLanguage, setDoctorLanguage] = useState('en');
+  const [laymanLanguage, setLaymanLanguage] = useState('en');
+  const [isTranslatingDoctor, setIsTranslatingDoctor] = useState(false);
+  const [isTranslatingLayman, setIsTranslatingLayman] = useState(false);
   const [chatVisible, setChatVisible] = useState(false);
   const [doctorResult, setDoctorResult] = useState<string | null>(null);
   const [laymanResult, setLaymanResult] = useState<string | null>(null);
@@ -85,7 +87,8 @@ export default function HomeScreen() {
     setSelectedImages([]);
     setDoctorResult(null);
     setLaymanResult(null);
-    setLanguage("en");
+    setDoctorLanguage("en");
+    setLaymanLanguage("en");
     setResult(null);
   };
 
@@ -121,15 +124,23 @@ export default function HomeScreen() {
       if (response?.data) {
         const fullResult = response.data;
 
-        // Split doctor vs layman explanations
-        const doctorMatch = fullResult.match(/Doctor-Level Explanation:(.*)Layman-Friendly Explanation:/s);
-        const laymanMatch = fullResult.match(/Layman-Friendly Explanation:(.*)/s);
+        // Regex to match Doctor-Level Explanation
+        const doctorMatch = fullResult.match(
+          /(?:###\s*|[*]{2})Doctor-Level Explanation[:*]*\s*([\s\S]*?)(?:Layman-Friendly Explanation|$)/i
+        );
 
-        setDoctorResult(doctorMatch ? doctorMatch[1].trim() : '');
-        setLaymanResult(laymanMatch ? laymanMatch[1].trim() : '');
+        // Regex to match Layman-Friendly Explanation
+        const laymanMatch = fullResult.match(
+          /(?:###\s*|[*]{2})Layman-Friendly Explanation[:*]*\s*([\s\S]*)/i
+        );
+
+        setDoctorResult(doctorMatch ? doctorMatch[1].trim() : null);
+        setLaymanResult(laymanMatch ? laymanMatch[1].trim() : null);
+
+
       } else if (response?.msg) {
-        setDoctorResult('');
-        setLaymanResult('');
+        setDoctorResult(null);
+        setLaymanResult(null);
         setResult(response.msg)
       }
     } catch (error) {
@@ -143,15 +154,32 @@ export default function HomeScreen() {
   const clearResults = () => {
     setDoctorResult(null);
     setLaymanResult(null);
-    setLanguage('en');
+    setDoctorLanguage('en');
+    setLaymanLanguage('en');
     setResult(null);
+  };
+
+  const translateDoctor = async (targetLang: string) => {
+    if (!doctorResult) return;
+
+    setIsTranslatingDoctor(true);
+    try {
+      const response: any = await apiService.translateText(doctorResult, targetLang);
+      setDoctorResult(response?.data);
+      setDoctorLanguage(targetLang);
+    } catch (error) {
+      console.error("Translation error:", error);
+      Alert.alert("Error", "Translation failed.");
+    } finally {
+      setIsTranslatingDoctor(false);
+    }
   };
 
   const translateLayman = async (targetLang: string) => {
     const textToTranslate = laymanResult || result;
-    if (!textToTranslate) return; // nothing to translate
+    if (!textToTranslate) return;
 
-    setIsTranslating(true);
+    setIsTranslatingLayman(true);
     try {
       const response: any = await apiService.translateText(textToTranslate, targetLang);
       if (laymanResult) {
@@ -159,15 +187,14 @@ export default function HomeScreen() {
       } else {
         setResult(response?.data);
       }
-      setLanguage(targetLang);
+      setLaymanLanguage(targetLang);
     } catch (error) {
       console.error("Translation error:", error);
       Alert.alert("Error", "Translation failed.");
     } finally {
-      setIsTranslating(false);
+      setIsTranslatingLayman(false);
     }
   };
-
 
 
   return (
@@ -272,71 +299,184 @@ export default function HomeScreen() {
         )}
 
         {/* Result Section */}
-        {(doctorResult || laymanResult || result) && (
+        {(doctorResult !== null || laymanResult !== null || result !== null) && (
           <View style={[styles.resultContainer, { backgroundColor: Colors.background.secondary }]}>
-            <View style={styles.resultHeader}>
-              <Zap size={20} color={Colors.accent} />
-              <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Analysis Result</Text>
+            {doctorResult !== null || laymanResult !== null ? (
+              <>
+                {/* Doctor Section */}
+                {doctorResult !== null && (
+                  <View style={[styles.resultContainer, { backgroundColor: Colors.background.secondary, marginBottom: 16 }]}>
+                    <View style={styles.resultHeader}>
+                      <Zap size={20} color={Colors.accent} />
+                      <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Doctor-Level Explanation</Text>
 
-              <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
-                <TouchableOpacity onPress={() => {
-                  const textToSpeak = laymanResult || result;
-                  if (textToSpeak) {
-                    toggleSpeak(textToSpeak, language);
-                  }
-                }}
-                  disabled={isLoading1 || isTranslating}>
-                  {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
-                </TouchableOpacity>
+                      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
+                        <TouchableOpacity onPress={() => {
+                          if (doctorResult) {
+                            toggleSpeak(doctorResult, doctorLanguage);
+                          }
+                        }}
+                          disabled={isLoading1 || isTranslatingDoctor}>
+                          {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
+                        </TouchableOpacity>
 
-                <View style={styles.iconButton}>
-                  {isTranslating ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                        <View style={styles.iconButton}>
+                          {isTranslatingDoctor ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                        </View>
+
+                        <Picker
+                          selectedValue={doctorLanguage}
+                          style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
+                          onValueChange={(value: any) => translateDoctor(value)}
+                          enabled={!isTranslatingDoctor && !isLoading1 && !isSpeaking}
+                        >
+                          <Picker.Item label="English" value="en" />
+                          <Picker.Item label="Hindi" value="hi" />
+                          <Picker.Item label="Telugu" value="te" />
+                          <Picker.Item label="Tamil" value="ta" />
+                          <Picker.Item label="Kannada" value="kn" />
+                          <Picker.Item label="Malayalam" value="ml" />
+                          <Picker.Item label="Gujarati" value="gu" />
+                          <Picker.Item label="Marathi" value="mr" />
+                          <Picker.Item label="Bengali" value="bn" />
+                          <Picker.Item label="Spanish" value="es" />
+                          <Picker.Item label="French" value="fr" />
+                          <Picker.Item label="German" value="de" />
+                          <Picker.Item label="Portuguese" value="pt" />
+                          <Picker.Item label="Russian" value="ru" />
+                          <Picker.Item label="Chinese" value="zh" />
+                          <Picker.Item label="Japanese" value="ja" />
+                          <Picker.Item label="Korean" value="ko" />
+                          <Picker.Item label="Arabic" value="ar" />
+                          <Picker.Item label="Turkish" value="tr" />
+                          <Picker.Item label="Dutch" value="nl" />
+                          <Picker.Item label="Swedish" value="sv" />
+                        </Picker>
+                      </View>
+                    </View>
+
+                    <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
+                      {doctorResult}
+                    </Markdown>
+                  </View>
+                )}
+
+                {/* Layman Section */}
+                {laymanResult !== null && (
+                  <View style={[styles.resultContainer, { backgroundColor: Colors.background.secondary }]}>
+                    <View style={styles.resultHeader}>
+                      <Zap size={20} color={Colors.accent} />
+                      <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Layman-Friendly Explanation</Text>
+
+                      <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
+                        <TouchableOpacity onPress={() => {
+                          if (laymanResult) {
+                            toggleSpeak(laymanResult, laymanLanguage);
+                          }
+                        }}
+                          disabled={isLoading1 || isTranslatingLayman}>
+                          {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
+                        </TouchableOpacity>
+
+                        <View style={styles.iconButton}>
+                          {isTranslatingLayman ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                        </View>
+
+                        <Picker
+                          selectedValue={laymanLanguage}
+                          style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
+                          onValueChange={(value: any) => translateLayman(value)}
+                          enabled={!isTranslatingLayman && !isLoading1 && !isSpeaking}
+                        >
+                          <Picker.Item label="English" value="en" />
+                          <Picker.Item label="Hindi" value="hi" />
+                          <Picker.Item label="Telugu" value="te" />
+                          <Picker.Item label="Tamil" value="ta" />
+                          <Picker.Item label="Kannada" value="kn" />
+                          <Picker.Item label="Malayalam" value="ml" />
+                          <Picker.Item label="Gujarati" value="gu" />
+                          <Picker.Item label="Marathi" value="mr" />
+                          <Picker.Item label="Bengali" value="bn" />
+                          <Picker.Item label="Spanish" value="es" />
+                          <Picker.Item label="French" value="fr" />
+                          <Picker.Item label="German" value="de" />
+                          <Picker.Item label="Portuguese" value="pt" />
+                          <Picker.Item label="Russian" value="ru" />
+                          <Picker.Item label="Chinese" value="zh" />
+                          <Picker.Item label="Japanese" value="ja" />
+                          <Picker.Item label="Korean" value="ko" />
+                          <Picker.Item label="Arabic" value="ar" />
+                          <Picker.Item label="Turkish" value="tr" />
+                          <Picker.Item label="Dutch" value="nl" />
+                          <Picker.Item label="Swedish" value="sv" />
+                        </Picker>
+                      </View>
+                    </View>
+
+                    <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
+                      {laymanResult}
+                    </Markdown>
+                  </View>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Error/Result Section */}
+                <View style={styles.resultHeader}>
+                  <Zap size={20} color={Colors.accent} />
+                  <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Analysis Result</Text>
+
+                  <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
+                    <TouchableOpacity onPress={() => {
+                      if (result) {
+                        toggleSpeak(result, laymanLanguage);
+                      }
+                    }}
+                      disabled={isLoading1 || isTranslatingLayman}>
+                      {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
+                    </TouchableOpacity>
+
+                    <View style={styles.iconButton}>
+                      {isTranslatingLayman ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                    </View>
+
+                    <Picker
+                      selectedValue={laymanLanguage}
+                      style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
+                      onValueChange={(value: any) => translateLayman(value)}
+                      enabled={!isTranslatingLayman && !isLoading1 && !isSpeaking}
+                    >
+                      <Picker.Item label="English" value="en" />
+                      <Picker.Item label="Hindi" value="hi" />
+                      <Picker.Item label="Telugu" value="te" />
+                      <Picker.Item label="Tamil" value="ta" />
+                      <Picker.Item label="Kannada" value="kn" />
+                      <Picker.Item label="Malayalam" value="ml" />
+                      <Picker.Item label="Gujarati" value="gu" />
+                      <Picker.Item label="Marathi" value="mr" />
+                      <Picker.Item label="Bengali" value="bn" />
+                      <Picker.Item label="Spanish" value="es" />
+                      <Picker.Item label="French" value="fr" />
+                      <Picker.Item label="German" value="de" />
+                      <Picker.Item label="Portuguese" value="pt" />
+                      <Picker.Item label="Russian" value="ru" />
+                      <Picker.Item label="Chinese" value="zh" />
+                      <Picker.Item label="Japanese" value="ja" />
+                      <Picker.Item label="Korean" value="ko" />
+                      <Picker.Item label="Arabic" value="ar" />
+                      <Picker.Item label="Turkish" value="tr" />
+                      <Picker.Item label="Dutch" value="nl" />
+                      <Picker.Item label="Swedish" value="sv" />
+                    </Picker>
+                  </View>
                 </View>
 
-                <Picker
-                  selectedValue={language}
-                  style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
-                  onValueChange={(value: any) => translateLayman(value)}
-                  enabled={!isTranslating && !isLoading1 && !isSpeaking}
-                >
-                  <Picker.Item label="English" value="en" />
-                  <Picker.Item label="Hindi" value="hi" />
-                  <Picker.Item label="Telugu" value="te" />
-                  <Picker.Item label="Tamil" value="ta" />
-                  <Picker.Item label="Kannada" value="kn" />
-                  <Picker.Item label="Malayalam" value="ml" />
-                  <Picker.Item label="Gujarati" value="gu" />
-                  <Picker.Item label="Marathi" value="mr" />
-                  <Picker.Item label="Bengali" value="bn" />
-                  <Picker.Item label="Spanish" value="es" />
-                  <Picker.Item label="French" value="fr" />
-                  <Picker.Item label="German" value="de" />
-                  <Picker.Item label="Portuguese" value="pt" />
-                  <Picker.Item label="Russian" value="ru" />
-                  <Picker.Item label="Chinese" value="zh" />
-                  <Picker.Item label="Japanese" value="ja" />
-                  <Picker.Item label="Korean" value="ko" />
-                  <Picker.Item label="Arabic" value="ar" />
-                  <Picker.Item label="Turkish" value="tr" />
-                  <Picker.Item label="Dutch" value="nl" />
-                  <Picker.Item label="Swedish" value="sv" />
-                </Picker>
-              </View>
-            </View>
-
-            <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
-              {doctorResult || laymanResult ? (
-                [
-                  doctorResult ? `Doctor-Level Explanation:\n${doctorResult}\n\n` : "",
-                  laymanResult ? `Layman-Friendly Explanation:\n${laymanResult}` : ""
-                ].join("")
-              ) : (
-                result ||
-                "⚠️ We couldn’t analyze this document as a valid medical report.  \n👉 Please check if the file is a clear X-ray, MRI, CT scan, ultrasound, or medical report before uploading.  If the issue continues, try again later — the server may be busy."
-              )}
-            </Markdown>
-
-
+                <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
+                  {result ||
+                    "⚠️ We couldn’t analyze this document as a valid medical report.  \n👉 Please check if the file is a clear X-ray, MRI, CT scan, ultrasound, or medical report before uploading.  If the issue continues, try again later — the server may be busy."}
+                </Markdown>
+              </>
+            )}
           </View>
         )}
 
@@ -379,7 +519,11 @@ export default function HomeScreen() {
       {chatVisible && (
         <View style={[styles.chatWindow, { backgroundColor: Colors.background.secondary }]}>
           <View style={[styles.chatHeader, { backgroundColor: Colors.background.primary }]}>
-            <Text style={[styles.chatTitle, { color: Colors.text.primary }]}>AI Assistant</Text>
+            <View>
+              <Bot size={24} color={Colors.primary} />
+              <Text style={styles.headerTitle}>AI Assistant</Text>
+              <Text style={styles.headerSubtitle}>Ask me anything about health</Text>
+            </View>
             <TouchableOpacity onPress={() => setChatVisible(false)}>
               <X size={20} color={Colors.text.primary} />
             </TouchableOpacity>
