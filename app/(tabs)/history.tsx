@@ -111,7 +111,7 @@ export default function HistoryScreen() {
           Analysis History
         </Text>
         <Text style={{ fontSize: 16, color: Colors.text.secondary }}>
-          Your previous X-ray analyses
+          Your previous medical report analyses
         </Text>
       </View>
 
@@ -123,7 +123,7 @@ export default function HistoryScreen() {
             No analyses yet
           </Text>
           <Text style={{ fontSize: 16, color: Colors.text.secondary, textAlign: 'center', lineHeight: 22 }}>
-            Upload your first X-ray to see analysis results here
+            Upload your first report to see analysis results here
           </Text>
         </View>
       ) : (

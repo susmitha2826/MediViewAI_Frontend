@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, Shield, Zap, Users } from 'lucide-react-native';
+import { Heart, Shield, Zap, Users, Clock, MessageCircle, Camera } from 'lucide-react-native';
 import { Button } from '@/components/Button';
 import { useTheme } from "@/contexts/ThemeContext";
 import LightColors from "@/constants/colors";
@@ -22,7 +22,10 @@ export default function AboutScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logo}>
-            <Zap size={32} color={Colors.text.white} />
+            <Image
+              source={require("@/assets/images/logo.png")}
+              style={{ width: 32, height: 32, resizeMode: 'contain' }}
+            />
           </View>
           <Text style={styles.appName}>MediView AI</Text>
           <Text style={styles.version}>Version 1.0.0</Text>
@@ -32,53 +35,84 @@ export default function AboutScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About Our App</Text>
           <Text style={styles.description}>
-            MIDVIEW AI is a cutting-edge mobile application that leverages artificial intelligence 
-            to analyze X-ray images and provide detailed medical insights. Our advanced machine 
-            learning algorithms help healthcare AI models understand X-ray results 
-            with greater clarity and accuracy.
+            MediViewAI is a cutting-edge mobile application that leverages artificial intelligence to analyze medical reports and provide detailed insights. Our advanced AI algorithms help healthcare models interpret results with greater clarity and accuracy.
           </Text>
         </View>
-
         {/* Key Features */}
         <View style={styles.featuresSection}>
           <Text style={styles.sectionTitle}>Key Features</Text>
           <View style={styles.featuresList}>
+
             <View style={styles.featureItem}>
               <Zap size={24} color={Colors.primary} />
               <View style={styles.featureContent}>
                 <Text style={styles.featureTitle}>AI-Powered Analysis</Text>
                 <Text style={styles.featureDescription}>
-                  Advanced machine learning for accurate X-ray interpretation
+                  Advanced AI algorithms analyze your medical reports instantly and provide clear insights in both professional and layman-friendly formats.
                 </Text>
               </View>
             </View>
+
             <View style={styles.featureItem}>
               <Shield size={24} color={Colors.primary} />
               <View style={styles.featureContent}>
                 <Text style={styles.featureTitle}>Secure & Private</Text>
                 <Text style={styles.featureDescription}>
-                  Your medical data is encrypted and stored securely
+                  Your medical data is encrypted, stored securely, and handled with the highest privacy standards.
                 </Text>
               </View>
             </View>
+
             <View style={styles.featureItem}>
               <Users size={24} color={Colors.primary} />
               <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Professional Grade</Text>
+                <Text style={styles.featureTitle}>User-Friendly & Professional</Text>
                 <Text style={styles.featureDescription}>
-                  Designed for healthcare professionals and patients
+                  Designed for both healthcare professionals and patients, making medical insights easy to understand and use.
                 </Text>
               </View>
             </View>
+
+            <View style={styles.featureItem}>
+              <Camera size={24} color={Colors.primary} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Upload or Capture Reports</Text>
+                <Text style={styles.featureDescription}>
+                  Upload reports from your gallery or capture them directly with your camera for instant analysis.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureItem}>
+              <MessageCircle size={24} color={Colors.primary} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>AI Chat Assistance</Text>
+                <Text style={styles.featureDescription}>
+                  Get general medical guidance, answer questions, or receive diet recommendations through the AI chatbot.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.featureItem}>
+              <Clock size={24} color={Colors.primary} />
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>History & Logs</Text>
+                <Text style={styles.featureDescription}>
+                  Access all previous reports and analyses anytime through the history tab for easy reference.
+                </Text>
+              </View>
+            </View>
+
           </View>
         </View>
+
 
         {/* Disclaimer */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Important Notice</Text>
           <Text style={styles.disclaimer}>
-            This application is designed to assist in medical analysis but should not replace 
-            professional medical advice, diagnosis, or treatment. Always consult with qualified 
+            This application is designed to assist in medical analysis but should not replace
+            professional medical advice, diagnosis, or treatment. Always consult with qualified
             healthcare professionals for medical decisions.
           </Text>
         </View>

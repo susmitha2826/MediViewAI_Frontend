@@ -26,13 +26,11 @@ const showAlert = (
   onPress?: () => void
 ) => {
   if (isWeb) {
-    // On web, use window.alert for simplicity
     window.alert(`${title}: ${message}`);
     if (onPress) {
       onPress();
     }
   } else {
-    // On mobile, use Alert.alert
     Alert.alert(title, message, onPress ? [{ text: 'OK', onPress }] : [{ text: 'OK' }]);
   }
 };
@@ -54,6 +52,7 @@ export default function LandingPage() {
   const scrollRef = useRef<ScrollView>(null);
   const homeRef = useRef<View>(null);
   const featuresRef = useRef<View>(null);
+  const futurePlansRef = useRef<View>(null);
 
   const handleRegister = async () => {
     if (!formData.name || !formData.email || !formData.dob || !formData.password) {
@@ -124,18 +123,16 @@ export default function LandingPage() {
     showAlert('Coming Soon', 'The iOS version is not available yet. Stay tuned for future updates!');
   };
 
-  const scrollToSection = (section: 'home' | 'features') => {
+  const scrollToSection = (section: 'home' | 'features' | 'futurePlans') => {
     setActiveTab(section);
-    setShowForm(false); // Ensure form is hidden to render sections
-    const ref = section === 'home' ? homeRef : featuresRef;
+    setShowForm(false);
+    const ref = section === 'home' ? homeRef : section === 'features' ? featuresRef : futurePlansRef;
 
     if (!scrollRef.current || !ref.current) {
       console.error('ScrollView or section ref is not available');
-      // showAlert('Error', 'Unable to scroll to section. Please try again.');
       return;
     }
 
-    // Use setTimeout to ensure layout is ready
     setTimeout(() => {
       ref.current!.measureLayout(
         scrollRef.current!.getScrollableNode(),
@@ -147,7 +144,7 @@ export default function LandingPage() {
           showAlert('Error', 'Failed to scroll to section. Please try again.');
         }
       );
-    }, 100); // Small delay to ensure rendering
+    }, 100);
   };
 
   const handleShowForm = (register: boolean) => {
@@ -194,6 +191,27 @@ export default function LandingPage() {
     },
   ];
 
+  const futurePlans = [
+    {
+      title: 'Find Nearby Healthcare Facilities',
+      description:
+        'Locate the nearest hospitals, clinics, and emergency rooms with real-time availability, ensuring you get care when you need it most.',
+      icon: '🏥',
+    },
+    {
+      title: 'Telehealth Integration',
+      description:
+        'Connect with healthcare professionals directly through the app for virtual consultations and follow-ups, making healthcare more accessible.',
+      icon: '💻',
+    },
+    {
+      title: 'Personalized Health Insights',
+      description:
+        'Receive tailored health recommendations based on your medical history and AI analysis, empowering you to take control of your wellness.',
+      icon: '📊',
+    },
+  ];
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -224,6 +242,14 @@ export default function LandingPage() {
               >
                 <Text style={[styles.navTabText, activeTab === 'features' && styles.activeTabText]}>
                   Features
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.navTab, activeTab === 'futurePlans' && styles.activeTab]}
+                onPress={() => scrollToSection('futurePlans')}
+              >
+                <Text style={[styles.navTabText, activeTab === 'futurePlans' && styles.activeTabText]}>
+                  Future Plans
                 </Text>
               </TouchableOpacity>
             </View>
@@ -334,7 +360,6 @@ export default function LandingPage() {
                   </TouchableOpacity>
                 </View>
               </View>
-              {/* Phone Mockup */}
               <View style={styles.phoneContainer}>
                 <View style={styles.mockupPhone}>
                   <View style={styles.phoneNotch} />
@@ -361,6 +386,23 @@ export default function LandingPage() {
                     <Text style={styles.featureIcon}>{feature.icon}</Text>
                     <Text style={styles.featureTitle}>{feature.title}</Text>
                     <Text style={styles.featureDescription}>{feature.description}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Future Plans Section */}
+            <View style={styles.futurePlansSection} ref={futurePlansRef}>
+              <Text style={styles.sectionTitle}>Our Vision for the Future</Text>
+              <Text style={styles.sectionSubtitle}>
+                MediViewAI is evolving to make healthcare more accessible and connected. Here’s what’s coming next.
+              </Text>
+              <View style={styles.featuresGrid}>
+                {futurePlans.map((plan, index) => (
+                  <View key={index} style={styles.featureCard}>
+                    <Text style={styles.featureIcon}>{plan.icon}</Text>
+                    <Text style={styles.featureTitle}>{plan.title}</Text>
+                    <Text style={styles.featureDescription}>{plan.description}</Text>
                   </View>
                 ))}
               </View>
@@ -678,6 +720,11 @@ const styles = StyleSheet.create({
   featuresSection: {
     padding: 40,
     backgroundColor: Colors.background.secondary,
+  },
+  // Future Plans Section Styles
+  futurePlansSection: {
+    padding: 40,
+    backgroundColor: Colors.background.primary,
   },
   sectionTitle: {
     fontSize: 36,

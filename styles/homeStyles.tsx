@@ -11,6 +11,42 @@ import {
 const isWeb = Platform.OS === 'web';
 const { width, height } = Dimensions.get('window');
 export const styles = StyleSheet.create({
+  camera: {
+    flex: 1,
+    aspectRatio: 1,
+    margin: 20,
+    borderRadius: 10,
+  },
+  cameraPreviewContainer: {
+    maxHeight: 100,
+    marginHorizontal: 20,
+    marginBottom: 10,
+  },
+  cameraPreviewImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  cameraControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  cameraButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  cameraButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
 
   imagePreviewContainer: {
     flexDirection: 'row',

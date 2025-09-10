@@ -43,7 +43,7 @@ export default function LoginScreen() {
         <View style={styles.header}>
           <Text style={styles.appName}>MediView AI</Text>
           <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue your X-ray analysis</Text>
+          <Text style={styles.subtitle}>Sign in to continue your Medical Report Analysis</Text>
         </View>
 
         <View style={styles.formBox}>

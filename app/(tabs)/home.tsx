@@ -1,5 +1,5 @@
 import ChatScreen from '../../utils/chat';
-import { X, MessageCircle, Camera, Upload, FileImage, AlertTriangle, Zap, Volume2, Languages, StopCircle, FileText, Bot } from 'lucide-react-native';
+import { X, MessageCircle, Camera as CameraIcon, Upload, FileImage, AlertTriangle, Zap, Volume2, Languages, StopCircle, FileText, Bot } from 'lucide-react-native';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,17 +9,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/services/api';
 import Markdown from 'react-native-markdown-display';
 import { useSpeech } from '@/utils/ttsService';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { styles } from '@/styles/homeStyles';
-
 import { useTheme } from "@/contexts/ThemeContext";
 import LightColors from "@/constants/colors";
 import DarkColors from "@/constants/darkColors";
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export default function HomeScreen() {
   const { darkMode } = useTheme();
   const Colors = darkMode ? DarkColors : LightColors;
-
   const { user } = useAuth();
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -32,7 +31,11 @@ export default function HomeScreen() {
   const [doctorResult, setDoctorResult] = useState<string | null>(null);
   const [laymanResult, setLaymanResult] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
-
+  const [cameraModalVisible, setCameraModalVisible] = useState(false);
+  const [cameraPhotos, setCameraPhotos] = useState<string[]>([]);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+  const MAX_PHOTOS = 5; // Limit for captured photos
   const subtitles = [
     "Your health buddy 🤝",
     "Here to explain in simple words ✨",
@@ -52,13 +55,12 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [fadeAnim]);
 
-  const pickImageFromGallery = async () => {
+  const pickImageFromGallery = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please grant gallery access to upload X-rays');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -67,81 +69,129 @@ export default function HomeScreen() {
       quality: 0.8,
       base64: true,
     });
-
     if (!result.canceled) {
       const base64Array = result.assets.map(asset => `data:image/jpeg;base64,${asset.base64}`);
-      setSelectedImages(prev => [...prev, ...base64Array]);
+      setSelectedImages(prev => [...prev, ...base64Array.filter(img => !prev.includes(img))]);
       clearResults();
     }
-  };
+  }, []);
 
-  const resetAnalysis = () => {
+  const resetAnalysis = useCallback(() => {
     try {
-      // Stop ongoing speech
       Speech.stop();
     } catch (err) {
       console.warn("Error stopping speech:", err);
     }
-
-    // Reset all analysis-related state
     setSelectedImages([]);
     setDoctorResult(null);
     setLaymanResult(null);
     setDoctorLanguage("en");
     setLaymanLanguage("en");
     setResult(null);
-  };
+  }, []);
 
-
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera access to take X-ray photos');
+  const takePhoto = useCallback(async () => {
+    if (!permission) {
+      const { status } = await requestPermission();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera access to take X-ray photos');
+        return;
+      }
+    } else if (permission.status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant camera access in your device settings');
       return;
     }
+    setCameraPhotos([]);
+    setCameraModalVisible(true);
+  }, [permission, requestPermission]);
 
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-      base64: true,
-    });
+  const capturePhoto = useCallback(async () => {
+    if (cameraPhotos.length >= MAX_PHOTOS) {
+      Alert.alert('Limit Reached', `You can capture up to ${MAX_PHOTOS} photos at a time.`);
+      return;
+    }
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.6,
+          base64: true,
+        });
+        if (photo.base64) {
+          setCameraPhotos(prev => [...prev, `data:image/jpeg;base64,${photo.base64}`]);
+          // Alert.alert('Success', 'Photo captured!');
+        }
+      } catch (error) {
+        console.error('Capture error:', error);
+        Alert.alert('Error', 'Failed to capture photo. Please try again.');
+      }
+    }
+  }, [cameraPhotos]);
 
-    if (!result.canceled) {
-      setSelectedImages(prev => [...prev, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+
+
+  const clearResults = useCallback(() => {
+    setDoctorResult(null);
+    setLaymanResult(null);
+    setDoctorLanguage('en');
+    setLaymanLanguage('en');
+    setResult(null);
+  }, []);
+
+  const finishCapture = useCallback(() => {
+    if (cameraPhotos.length > 0) {
+      setSelectedImages(prev => {
+        const newImages = cameraPhotos.filter(img => !prev.includes(img));
+        return [...prev, ...newImages];
+      });
       clearResults();
     }
-  };
+    setCameraModalVisible(false);
+    setCameraPhotos([]);
+  }, [cameraPhotos, clearResults]);
 
-  const analyzeImages = async () => {
+  const cancelCapture = useCallback(() => {
+    if (cameraPhotos.length > 0) {
+      Alert.alert(
+        'Discard Photos?',
+        'You have captured photos. Are you sure you want to cancel?',
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes',
+            style: 'destructive',
+            onPress: () => {
+              setCameraModalVisible(false);
+              setCameraPhotos([]);
+            },
+          },
+        ]
+      );
+    } else {
+      setCameraModalVisible(false);
+      setCameraPhotos([]);
+    }
+  }, [cameraPhotos]);
+
+  const analyzeImages = useCallback(async () => {
     if (selectedImages.length === 0) return;
-
     setIsAnalyzing(true);
     try {
       const base64Array = selectedImages.map(img => img.split(',')[1]);
       const response = await apiService.analyzeXray(base64Array);
-
       if (response?.data) {
         const fullResult = response.data;
-
-        // Regex to match Doctor-Level Explanation
         const doctorMatch = fullResult.match(
           /(?:###\s*|[*]{2})Doctor-Level Explanation[:*]*\s*([\s\S]*?)(?:Layman-Friendly Explanation|$)/i
         );
-
-        // Regex to match Layman-Friendly Explanation
         const laymanMatch = fullResult.match(
           /(?:###\s*|[*]{2})Layman-Friendly Explanation[:*]*\s*([\s\S]*)/i
         );
-
         setDoctorResult(doctorMatch ? doctorMatch[1].trim() : null);
         setLaymanResult(laymanMatch ? laymanMatch[1].trim() : null);
-
-
       } else if (response?.msg) {
         setDoctorResult(null);
         setLaymanResult(null);
-        setResult(response.msg)
+        setResult(response.msg);
       }
     } catch (error) {
       console.error('Analysis error:', error);
@@ -149,19 +199,11 @@ export default function HomeScreen() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [selectedImages]);
 
-  const clearResults = () => {
-    setDoctorResult(null);
-    setLaymanResult(null);
-    setDoctorLanguage('en');
-    setLaymanLanguage('en');
-    setResult(null);
-  };
 
-  const translateDoctor = async (targetLang: string) => {
+  const translateDoctor = useCallback(async (targetLang: string) => {
     if (!doctorResult) return;
-
     setIsTranslatingDoctor(true);
     try {
       const response: any = await apiService.translateText(doctorResult, targetLang);
@@ -173,12 +215,11 @@ export default function HomeScreen() {
     } finally {
       setIsTranslatingDoctor(false);
     }
-  };
+  }, [doctorResult]);
 
-  const translateLayman = async (targetLang: string) => {
+  const translateLayman = useCallback(async (targetLang: string) => {
     const textToTranslate = laymanResult || result;
     if (!textToTranslate) return;
-
     setIsTranslatingLayman(true);
     try {
       const response: any = await apiService.translateText(textToTranslate, targetLang);
@@ -194,8 +235,7 @@ export default function HomeScreen() {
     } finally {
       setIsTranslatingLayman(false);
     }
-  };
-
+  }, [laymanResult, result]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background.primary }]}>
@@ -207,7 +247,6 @@ export default function HomeScreen() {
             {subtitles[index]}
           </Animated.Text>
         </View>
-
         {/* Disclaimer */}
         <View style={[styles.disclaimerCard, { backgroundColor: Colors.background.secondary }]}>
           <AlertTriangle color={Colors.warning} size={20} />
@@ -215,11 +254,9 @@ export default function HomeScreen() {
             This tool provides educational insights only and is not a substitute for professional medical diagnosis.
           </Text>
         </View>
-
         {/* Upload Section */}
         <View style={[styles.uploadSection, { backgroundColor: Colors.background.secondary }]}>
           <Text style={[styles.sectionTitle, { color: Colors.text.primary }]}>Upload X-ray Images</Text>
-
           {selectedImages.length > 0 ? (
             <ScrollView horizontal style={styles.imagePreviewContainer}>
               {selectedImages.map((img, index) => (
@@ -241,6 +278,7 @@ export default function HomeScreen() {
                       if (!isAnalyzing) setSelectedImages(prev => prev.filter((_, i) => i !== index));
                       else Alert.alert("Analysis in progress", "You cannot remove images while analysis is running.");
                     }}
+                    accessibilityLabel="Remove image"
                   >
                     <Text style={{
                       color: Colors.danger,
@@ -253,39 +291,129 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              <TouchableOpacity style={[styles.addMoreButton, { backgroundColor: Colors.background.tertiary }]} onPress={pickImageFromGallery}>
+              <TouchableOpacity
+                style={[styles.addMoreButton, { backgroundColor: Colors.background.tertiary }]}
+                onPress={pickImageFromGallery}
+                accessibilityLabel="Add more images"
+              >
                 <FileImage color={Colors.primary} size={32} />
                 <Text style={[styles.uploadButtonText, { color: Colors.text.primary }]}>Add More</Text>
               </TouchableOpacity>
             </ScrollView>
           ) : (
             <View style={styles.uploadOptions}>
-              <TouchableOpacity style={[styles.uploadButton, { backgroundColor: Colors.background.tertiary }]} onPress={takePhoto}>
-                <Camera color={Colors.primary} size={32} />
+              <TouchableOpacity
+                style={[styles.uploadButton, { backgroundColor: Colors.background.tertiary }]}
+                onPress={takePhoto}
+                accessibilityLabel="Take photo with camera"
+              >
+                <CameraIcon color={Colors.primary} size={32} />
                 <Text style={[styles.uploadButtonText, { color: Colors.text.primary }]}>Take Photo</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.uploadButton, { backgroundColor: Colors.background.tertiary }]} onPress={pickImageFromGallery}>
+              <TouchableOpacity
+                style={[styles.uploadButton, { backgroundColor: Colors.background.tertiary }]}
+                onPress={pickImageFromGallery}
+                accessibilityLabel="Choose image from gallery"
+              >
                 <FileImage color={Colors.primary} size={32} />
                 <Text style={[styles.uploadButtonText, { color: Colors.text.primary }]}>Choose from Gallery</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
+        {/* Camera Modal */}
+        <Modal visible={cameraModalVisible} animationType="slide">
+          <SafeAreaView style={[styles.container, { backgroundColor: Colors.background.primary }]}>
+            <CameraView
+              style={{ flex: 1 }}  // ✅ must fill the container
+              // style={styles.camera}
+              ref={cameraRef}
+              facing="back"
+
+              ratio="4:3"   // ✅ Ensures 4:3 preview & capture
+            />
+
+            <ScrollView horizontal style={styles.cameraPreviewContainer}>
+              {cameraPhotos.map((img, index) => (
+                <View key={index} style={styles.imageWrapper}>
+                  <Image source={{ uri: img }} style={styles.cameraPreviewImage} />
+                  <TouchableOpacity
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(255,255,255,0.8)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setCameraPhotos(prev => prev.filter((_, i) => i !== index))}
+                    accessibilityLabel="Remove captured photo"
+                  >
+                    <Text style={{
+                      color: Colors.danger,
+                      fontWeight: 'bold',
+                      fontSize: 16,
+                      textShadowColor: '#000',
+                      textShadowOffset: { width: 0.5, height: 0.5 },
+                      textShadowRadius: 1,
+                    }}>X</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.cameraControls}>
+              <TouchableOpacity
+                style={[styles.cameraButton, { backgroundColor: Colors.primary }]}
+                onPress={capturePhoto}
+                accessibilityLabel="Capture photo"
+              >
+                <CameraIcon color={Colors.text.white} size={24} />
+                <Text style={[styles.cameraButtonText, { color: Colors.text.white }]}>Capture</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.cameraButton,
+                  { backgroundColor: cameraPhotos.length === 0 ? Colors.primary : Colors.success },
+                ]}
+                onPress={finishCapture}
+                disabled={cameraPhotos.length === 0}
+                accessibilityLabel="Finish capturing photos"
+                accessibilityHint={cameraPhotos.length === 0 ? "No photos captured yet" : "Save captured photos"}
+              >
+                <Text style={[styles.cameraButtonText, { color: Colors.text.white }]}>Done</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cameraButton, { backgroundColor: Colors.danger }]}
+                onPress={cancelCapture}
+                accessibilityLabel="Cancel photo capture"
+              >
+                <Text style={[styles.cameraButtonText, { color: Colors.text.white }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
         {/* New Analysis Button */}
         {selectedImages.length > 0 && (
           <View style={{ alignItems: "center", marginVertical: 10 }}>
-            <TouchableOpacity style={styles.changeImageButton} onPress={resetAnalysis}>
+            <TouchableOpacity
+              style={styles.changeImageButton}
+              onPress={resetAnalysis}
+              accessibilityLabel="Start new analysis"
+            >
               <Text style={styles.changeImageText}>New Analysis</Text>
             </TouchableOpacity>
           </View>
         )}
-
         {/* Analyze Button */}
         {selectedImages.length > 0 && (
           <TouchableOpacity
             style={[styles.analyzeButton, { backgroundColor: Colors.primary }, isAnalyzing && styles.analyzeButtonDisabled]}
             onPress={analyzeImages}
             disabled={isAnalyzing}
+            accessibilityLabel="Analyze uploaded X-ray images"
           >
             {isAnalyzing ? (
               <ActivityIndicator color={Colors.text.white} size="small" />
@@ -297,7 +425,6 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         )}
-
         {/* Result Section */}
         {(doctorResult !== null || laymanResult !== null || result !== null) && (
           <View style={[styles.resultContainer, { backgroundColor: Colors.background.secondary }]}>
@@ -309,26 +436,37 @@ export default function HomeScreen() {
                     <View style={styles.resultHeader}>
                       <Zap size={20} color={Colors.accent} />
                       <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Doctor-Level Explanation</Text>
-
                       <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
-                        <TouchableOpacity onPress={() => {
-                          if (doctorResult) {
-                            toggleSpeak(doctorResult, doctorLanguage);
-                          }
-                        }}
-                          disabled={isLoading1 || isTranslatingDoctor}>
-                          {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (doctorResult) {
+                              toggleSpeak(doctorResult, doctorLanguage);
+                            }
+                          }}
+                          disabled={isLoading1 || isTranslatingDoctor}
+                          accessibilityLabel={isSpeaking ? "Stop reading explanation" : "Read explanation aloud"}
+                        >
+                          {isLoading1 ? (
+                            <ActivityIndicator size="small" color={Colors.text.light} />
+                          ) : isSpeaking ? (
+                            <StopCircle size={20} color={Colors.danger} />
+                          ) : (
+                            <Volume2 size={20} color={Colors.primary} />
+                          )}
                         </TouchableOpacity>
-
                         <View style={styles.iconButton}>
-                          {isTranslatingDoctor ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                          {isTranslatingDoctor ? (
+                            <ActivityIndicator size="small" color={Colors.primary} />
+                          ) : (
+                            <Languages size={20} color={Colors.primary} />
+                          )}
                         </View>
-
                         <Picker
                           selectedValue={doctorLanguage}
                           style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
                           onValueChange={(value: any) => translateDoctor(value)}
                           enabled={!isTranslatingDoctor && !isLoading1 && !isSpeaking}
+                          accessibilityLabel="Select language for doctor explanation"
                         >
                           <Picker.Item label="English" value="en" />
                           <Picker.Item label="Hindi" value="hi" />
@@ -354,39 +492,48 @@ export default function HomeScreen() {
                         </Picker>
                       </View>
                     </View>
-
                     <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
                       {doctorResult}
                     </Markdown>
                   </View>
                 )}
-
                 {/* Layman Section */}
                 {laymanResult !== null && (
                   <View style={[styles.resultContainer, { backgroundColor: Colors.background.secondary }]}>
                     <View style={styles.resultHeader}>
                       <Zap size={20} color={Colors.accent} />
                       <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Layman-Friendly Explanation</Text>
-
                       <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
-                        <TouchableOpacity onPress={() => {
-                          if (laymanResult) {
-                            toggleSpeak(laymanResult, laymanLanguage);
-                          }
-                        }}
-                          disabled={isLoading1 || isTranslatingLayman}>
-                          {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (laymanResult) {
+                              toggleSpeak(laymanResult, laymanLanguage);
+                            }
+                          }}
+                          disabled={isLoading1 || isTranslatingLayman}
+                          accessibilityLabel={isSpeaking ? "Stop reading explanation" : "Read explanation aloud"}
+                        >
+                          {isLoading1 ? (
+                            <ActivityIndicator size="small" color={Colors.text.light} />
+                          ) : isSpeaking ? (
+                            <StopCircle size={20} color={Colors.danger} />
+                          ) : (
+                            <Volume2 size={20} color={Colors.primary} />
+                          )}
                         </TouchableOpacity>
-
                         <View style={styles.iconButton}>
-                          {isTranslatingLayman ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                          {isTranslatingLayman ? (
+                            <ActivityIndicator size="small" color={Colors.primary} />
+                          ) : (
+                            <Languages size={20} color={Colors.primary} />
+                          )}
                         </View>
-
                         <Picker
                           selectedValue={laymanLanguage}
                           style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
                           onValueChange={(value: any) => translateLayman(value)}
                           enabled={!isTranslatingLayman && !isLoading1 && !isSpeaking}
+                          accessibilityLabel="Select language for layman explanation"
                         >
                           <Picker.Item label="English" value="en" />
                           <Picker.Item label="Hindi" value="hi" />
@@ -412,7 +559,6 @@ export default function HomeScreen() {
                         </Picker>
                       </View>
                     </View>
-
                     <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
                       {laymanResult}
                     </Markdown>
@@ -425,26 +571,37 @@ export default function HomeScreen() {
                 <View style={styles.resultHeader}>
                   <Zap size={20} color={Colors.accent} />
                   <Text style={[styles.resultTitle, { color: Colors.text.primary }]}>Analysis Result</Text>
-
                   <View style={{ flexDirection: "row", alignItems: "center", marginLeft: "auto", gap: 8 }}>
-                    <TouchableOpacity onPress={() => {
-                      if (result) {
-                        toggleSpeak(result, laymanLanguage);
-                      }
-                    }}
-                      disabled={isLoading1 || isTranslatingLayman}>
-                      {isLoading1 ? <ActivityIndicator size="small" color={Colors.text.light} /> : isSpeaking ? <StopCircle size={20} color={Colors.danger} /> : <Volume2 size={20} color={Colors.primary} />}
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (result) {
+                          toggleSpeak(result, laymanLanguage);
+                        }
+                      }}
+                      disabled={isLoading1 || isTranslatingLayman}
+                      accessibilityLabel={isSpeaking ? "Stop reading result" : "Read result aloud"}
+                    >
+                      {isLoading1 ? (
+                        <ActivityIndicator size="small" color={Colors.text.light} />
+                      ) : isSpeaking ? (
+                        <StopCircle size={20} color={Colors.danger} />
+                      ) : (
+                        <Volume2 size={20} color={Colors.primary} />
+                      )}
                     </TouchableOpacity>
-
                     <View style={styles.iconButton}>
-                      {isTranslatingLayman ? <ActivityIndicator size="small" color={Colors.primary} /> : <Languages size={20} color={Colors.primary} />}
+                      {isTranslatingLayman ? (
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                      ) : (
+                        <Languages size={20} color={Colors.primary} />
+                      )}
                     </View>
-
                     <Picker
                       selectedValue={laymanLanguage}
                       style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
                       onValueChange={(value: any) => translateLayman(value)}
                       enabled={!isTranslatingLayman && !isLoading1 && !isSpeaking}
+                      accessibilityLabel="Select language for analysis result"
                     >
                       <Picker.Item label="English" value="en" />
                       <Picker.Item label="Hindi" value="hi" />
@@ -470,22 +627,20 @@ export default function HomeScreen() {
                     </Picker>
                   </View>
                 </View>
-
                 <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
                   {result ||
-                    "⚠️ We couldn’t analyze this document as a valid medical report.  \n👉 Please check if the file is a clear X-ray, MRI, CT scan, ultrasound, or medical report before uploading.  If the issue continues, try again later — the server may be busy."}
+                    "⚠️ We couldn’t analyze this document as a valid medical report. \n👉 Please check if the file is a clear X-ray, MRI, CT scan, ultrasound, or medical report before uploading. If the issue continues, try again later — the server may be busy."}
                 </Markdown>
               </>
             )}
           </View>
         )}
-
         {/* Features Section */}
         <View style={styles.featuresSection}>
           <Text style={[styles.featuresTitle, { color: Colors.text.primary }]}>Features</Text>
           <View style={styles.featuresList}>
             <View style={styles.featureItem}>
-              <Camera size={24} color={Colors.primary} />
+              <CameraIcon size={24} color={Colors.primary} />
               <View style={styles.featureContent}>
                 <Text style={[styles.featureTitle, { color: Colors.text.primary }]}>AI-Powered Analysis</Text>
                 <Text style={[styles.featureDescription, { color: Colors.text.light }]}>
@@ -514,7 +669,6 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-
       {/* Floating Chat */}
       {chatVisible && (
         <View style={[styles.chatWindow, { backgroundColor: Colors.background.secondary }]}>
@@ -524,16 +678,22 @@ export default function HomeScreen() {
               <Text style={styles.headerTitle}>AI Assistant</Text>
               <Text style={styles.headerSubtitle}>Ask me anything about health</Text>
             </View>
-            <TouchableOpacity onPress={() => setChatVisible(false)}>
+            <TouchableOpacity
+              onPress={() => setChatVisible(false)}
+              accessibilityLabel="Close chat window"
+            >
               <X size={20} color={Colors.text.primary} />
             </TouchableOpacity>
           </View>
           <ChatScreen />
         </View>
       )}
-
       {!chatVisible && (
-        <TouchableOpacity style={[styles.chatButton, { backgroundColor: Colors.primary }]} onPress={() => setChatVisible(true)}>
+        <TouchableOpacity
+          style={[styles.chatButton, { backgroundColor: Colors.primary }]}
+          onPress={() => setChatVisible(true)}
+          accessibilityLabel="Open AI assistant chat"
+        >
           <MessageCircle size={28} color={Colors.text.white} />
         </TouchableOpacity>
       )}
