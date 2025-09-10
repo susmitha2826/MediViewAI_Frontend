@@ -28,7 +28,7 @@ export default function AboutScreen() {
             />
           </View>
           <Text style={styles.appName}>MediView AI</Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.version}>Version 1.1.0</Text>
         </View>
 
         {/* About */}
