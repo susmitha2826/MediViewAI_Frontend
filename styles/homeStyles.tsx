@@ -131,7 +131,23 @@ export const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "600",
   },
-
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: Colors.secondary,
+  },
+    headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   analyzeButton: {
     backgroundColor: Colors.primary,
     flexDirection: 'row',

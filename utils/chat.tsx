@@ -88,7 +88,7 @@ export default function ChatScreen() {
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.header}>
+        {/* <View style={styles.header}>
           <View style={styles.headerIcon}>
             <Bot size={24} color={Colors.primary} />
           </View>
@@ -96,7 +96,7 @@ export default function ChatScreen() {
             <Text style={styles.headerTitle}>AI Assistant</Text>
             <Text style={styles.headerSubtitle}>Ask me anything about health</Text>
           </View>
-        </View>
+        </View> */}
 
         <ScrollView
           style={styles.messagesContainer}
