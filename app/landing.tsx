@@ -133,7 +133,7 @@ export default function LandingPage() {
   };
 
   const handleDownloadAndroid = async () => {
-    const apkUrl = 'https://expo.dev/artifacts/eas/jctheojEYDDn8C6AAUXWP7.apk';
+    const apkUrl: any = process.env.ANDROID_URL;
 
     if (isAndroidDevice()) {
       try {
@@ -777,15 +777,16 @@ function createResponsiveStyles() {
       width: '100%',
     },
 
-    // Button Styles - Better mobile sizing
+    // Button Styles - Better mobile sizing and centering
     primaryButton: {
       backgroundColor: Colors.primary,
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderRadius: 8,
       alignItems: 'center',
-      width: getResponsiveValue('100%', 250, 200),
-      maxWidth: 300,
+      alignSelf: 'center',
+      width: getResponsiveValue('100%', 280, 300),
+      maxWidth: 350,
       shadowColor: Colors.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
@@ -796,6 +797,7 @@ function createResponsiveStyles() {
       color: Colors.text.primary,
       fontWeight: '600',
       fontSize: 16,
+      textAlign: 'center',
     },
     secondaryButton: {
       backgroundColor: 'transparent',
@@ -805,15 +807,18 @@ function createResponsiveStyles() {
       borderWidth: 1,
       borderColor: Colors.primary,
       alignItems: 'center',
-      width: getResponsiveValue('100%', 250, 200),
-      maxWidth: 300,
+      alignSelf: 'center',
+      width: getResponsiveValue('100%', 280, 300),
+      maxWidth: 350,
+      marginTop: 12,
     },
     secondaryButtonText: {
       color: Colors.primary,
       fontWeight: '600',
       fontSize: 16,
+      textAlign: 'center',
     },
-
+    
     // Phone Mockup Styles
     phoneContainer: {
       flex: 1,
