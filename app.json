@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Medical AI Assistant App",
-    "slug": "medical-ai-assistant-app",
+    "slug": "mediviewai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -30,11 +30,11 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "RECORD_AUDIO",
-        "INTERNET"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET"
       ]
     },
     "web": {
@@ -62,8 +62,9 @@
         "origin": "https://rork.com/"
       },
       "eas": {
-        "projectId": "d17953f9-5176-4ff7-9f8c-3d71fa08688b"
+        "projectId": "3cb81cbe-728e-4aa2-84d0-d63400cb47d4"
       }
-    }
+    },
+    "owner": "gsusmitha26"
   }
 }
