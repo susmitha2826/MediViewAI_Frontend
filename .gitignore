@@ -10,6 +10,8 @@
 + /ios
 
 # Android
+/android
+.android/
 android/
 *.apk
 *.aab

@@ -24,8 +24,8 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const success = await login(formData);
-      if (success) {
-        // console.log("✅ Login successful, navigating now...");
+      if (success?.status && success?.data) {
+        console.log("✅ Login successful, navigating now...",success);
         router.replace("/(tabs)/home");
       } else {
         alert("Login failed");

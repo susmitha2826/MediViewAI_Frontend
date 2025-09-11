@@ -205,7 +205,7 @@ export const styles = StyleSheet.create({
   resultContainer: {
     backgroundColor: Colors.background.secondary,
     borderRadius: 16,
-    padding: 20,
+    padding: 10,
     marginBottom: 24,
   },
   resultHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
