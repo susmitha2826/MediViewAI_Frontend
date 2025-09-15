@@ -16,6 +16,7 @@ import LightColors from "@/constants/colors";
 import DarkColors from "@/constants/darkColors";
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
+import LanguagePicker from '@/utils/languagePicker';
 
 export default function HomeScreen() {
   const { darkMode } = useTheme();
@@ -47,6 +48,7 @@ export default function HomeScreen() {
   ];
   const [index, setIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [selectedModel, setSelectedModel] = useState('rork');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -229,17 +231,31 @@ export default function HomeScreen() {
     setIsAnalyzing(true);
     try {
       const base64Array = selectedImages.map(img => img.split(',')[1]);
-      const response = await apiService.analyzeXray(base64Array);
+      const response = await apiService.analyzeXray(base64Array, selectedModel);
+      // console.log('Analysis response:', response);
       if (response?.data) {
         const fullResult = response.data;
+
+        // Capture both sections reliably
         const doctorMatch = fullResult.match(
-          /(?:###\s*|[*]{2})Doctor-Level Explanation[:*]*\s*([\s\S]*?)(?:Layman-Friendly Explanation|$)/i
+          /Doctor-Level Explanation[:*]?\s*([\s\S]*?)(?=Layman-Friendly Explanation[:*]?)/i
         );
+
         const laymanMatch = fullResult.match(
-          /(?:###\s*|[*]{2})Layman-Friendly Explanation[:*]*\s*([\s\S]*)/i
+          /Layman-Friendly Explanation[:*]?\s*([\s\S]*?)(This is a computer-generated response and not a replacement for professional medical advice\.?)/i
         );
-        setDoctorResult(doctorMatch ? doctorMatch[1].trim() : null);
-        setLaymanResult(laymanMatch ? laymanMatch[1].trim() : null);
+
+        // Combine explanation + disclaimer
+        const laymanText = laymanMatch
+          ? laymanMatch[1].trim() + "\n\n" + laymanMatch[2].trim()
+          : null;
+
+        const doctorLevel = doctorMatch ? doctorMatch[1].trim() : null;
+        const laymanFriendly = laymanText; // Use combined version here
+
+        setDoctorResult(doctorLevel);
+        setLaymanResult(laymanFriendly);
+
       } else if (response?.msg) {
         setDoctorResult(null);
         setLaymanResult(null);
@@ -251,7 +267,7 @@ export default function HomeScreen() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [selectedImages]);
+  }, [selectedImages, selectedModel]);
 
   const translateDoctor = useCallback(async (targetLang: string) => {
     if (!doctorResult) return;
@@ -474,6 +490,28 @@ export default function HomeScreen() {
             </View>
           </SafeAreaView>
         </Modal>
+        {/* Model Selection */}
+        {/* {selectedImages.length > 0 && (
+          <View style={[styles.uploadSection, { backgroundColor: Colors.background.secondary, marginTop: 16 }]}>
+            <Text style={[styles.sectionTitle, { color: Colors.text.primary }]}>Select Analysis Model</Text>
+            <Picker
+              selectedValue={selectedModel}
+              style={[
+                styles.languagePicker,
+                {
+                  color: Colors.text.primary,
+                  backgroundColor: Colors.background.tertiary,
+                },
+              ]}
+              onValueChange={(itemValue) => setSelectedModel(itemValue)}
+              accessibilityLabel="Select analysis model"
+            >
+              <Picker.Item label="Rork" value="rork" />
+              <Picker.Item label="ChexNet" value="chexnet" />
+              <Picker.Item label="OpenAI" value="openai" />
+            </Picker>
+          </View>
+        )} */}
         {/* New Analysis Button */}
         {selectedImages.length > 0 && (
           <View style={{ alignItems: "center", marginVertical: 10 }}>
@@ -569,43 +607,13 @@ export default function HomeScreen() {
                       </View>
 
                       {/* Language Picker */}
-                      <Picker
+                      <LanguagePicker
                         selectedValue={doctorLanguage}
-                        style={[
-                          styles.languagePicker,
-                          {
-                            minWidth: 120,
-                            maxWidth: 180,
-                            color: Colors.text.primary,
-                            backgroundColor: Colors.background.tertiary,
-                          },
-                        ]}
-                        onValueChange={(value: any) => translateDoctor(value)}
+                        onChange={(value) => translateDoctor(value)}
                         enabled={!isTranslatingDoctor && !isLoading1 && !isDoctorSpeaking}
-                        accessibilityLabel="Select language for doctor explanation"
-                      >
-                        <Picker.Item label="English" value="en" />
-                        <Picker.Item label="Hindi" value="hi" />
-                        <Picker.Item label="Telugu" value="te" />
-                        <Picker.Item label="Tamil" value="ta" />
-                        <Picker.Item label="Kannada" value="kn" />
-                        <Picker.Item label="Malayalam" value="ml" />
-                        <Picker.Item label="Gujarati" value="gu" />
-                        <Picker.Item label="Marathi" value="mr" />
-                        <Picker.Item label="Bengali" value="bn" />
-                        <Picker.Item label="Spanish" value="es" />
-                        <Picker.Item label="French" value="fr" />
-                        <Picker.Item label="German" value="de" />
-                        <Picker.Item label="Portuguese" value="pt" />
-                        <Picker.Item label="Russian" value="ru" />
-                        <Picker.Item label="Chinese" value="zh" />
-                        <Picker.Item label="Japanese" value="ja" />
-                        <Picker.Item label="Korean" value="ko" />
-                        <Picker.Item label="Arabic" value="ar" />
-                        <Picker.Item label="Turkish" value="tr" />
-                        <Picker.Item label="Dutch" value="nl" />
-                        <Picker.Item label="Swedish" value="sv" />
-                      </Picker>
+                        loading={isTranslatingDoctor}
+                      />
+
                     </View>
 
                     <Markdown style={{ body: { color: Colors.text.primary, fontSize: 16 } }}>
@@ -673,43 +681,13 @@ export default function HomeScreen() {
                       </View>
 
                       {/* Language Picker */}
-                      <Picker
+                      <LanguagePicker
                         selectedValue={laymanLanguage}
-                        style={[
-                          styles.languagePicker,
-                          {
-                            minWidth: 120,
-                            maxWidth: 180,
-                            color: Colors.text.primary,
-                            backgroundColor: Colors.background.tertiary,
-                          },
-                        ]}
-                        onValueChange={(value: any) => translateLayman(value)}
+                        onChange={(value) => translateLayman(value)}
                         enabled={!isTranslatingLayman && !isLoading1 && !isLaymanSpeaking}
-                        accessibilityLabel="Select language for layman explanation"
-                      >
-                        <Picker.Item label="English" value="en" />
-                        <Picker.Item label="Hindi" value="hi" />
-                        <Picker.Item label="Telugu" value="te" />
-                        <Picker.Item label="Tamil" value="ta" />
-                        <Picker.Item label="Kannada" value="kn" />
-                        <Picker.Item label="Malayalam" value="ml" />
-                        <Picker.Item label="Gujarati" value="gu" />
-                        <Picker.Item label="Marathi" value="mr" />
-                        <Picker.Item label="Bengali" value="bn" />
-                        <Picker.Item label="Spanish" value="es" />
-                        <Picker.Item label="French" value="fr" />
-                        <Picker.Item label="German" value="de" />
-                        <Picker.Item label="Portuguese" value="pt" />
-                        <Picker.Item label="Russian" value="ru" />
-                        <Picker.Item label="Chinese" value="zh" />
-                        <Picker.Item label="Japanese" value="ja" />
-                        <Picker.Item label="Korean" value="ko" />
-                        <Picker.Item label="Arabic" value="ar" />
-                        <Picker.Item label="Turkish" value="tr" />
-                        <Picker.Item label="Dutch" value="nl" />
-                        <Picker.Item label="Swedish" value="sv" />
-                      </Picker>
+                        loading={isTranslatingLayman}
+                      />
+
                     </View>
 
                     {/* Explanation text */}
@@ -752,15 +730,14 @@ export default function HomeScreen() {
                       )}
                     </View>
 
-                    <Picker
+                    <LanguagePicker
                       selectedValue={laymanLanguage}
-                      style={[styles.languagePicker, { width: 120, color: Colors.text.primary, backgroundColor: Colors.background.tertiary }]}
-                      onValueChange={(value: any) => translateLayman(value)}
+                      onChange={(value) => translateLayman(value)}
                       enabled={!isTranslatingLayman && !isLoading1 && !isLaymanSpeaking}
-                      accessibilityLabel="Select language for analysis result"
-                    >
-                      {/* same Picker.Items as before */}
-                    </Picker>
+                      loading={isTranslatingLayman}
+                    />
+
+
                   </View>
                 </View>
 

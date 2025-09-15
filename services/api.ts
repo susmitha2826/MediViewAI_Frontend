@@ -170,18 +170,21 @@ class ApiService {
     return response.json();
   }
 
-// X-ray API
-async analyzeXray(base64Images: string[] | string): Promise<AnalysisResult> {
+  // X-ray API
+async analyzeXray(base64Images: string[] | string, model: any): Promise<AnalysisResult> {
   const imagesArray = Array.isArray(base64Images) ? base64Images : [base64Images];
 
-  const response = await fetch(`${BASE_URL}/xray/analyze`, {
+  // Determine endpoint based on model
+  const endpoint = model === "chexnet" ? "/xray/upload" : "/xray/analyze";
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       ...(await this.getAuthHeaders()),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      images: imagesArray, // send array to backend
+      images: imagesArray,
     }),
   });
 
@@ -251,13 +254,25 @@ async analyzeXray(base64Images: string[] | string): Promise<AnalysisResult> {
 
   // AI Chat API
   async sendChatMessage(messages: { role: string; content: string }[]) {
+    // Prepend a system message to set medical context
+    const systemMessage = {
+      role: "system",
+      content: `You are a knowledgeable medical chatbot. Answer all questions accurately and professionally. 
+Provide clear explanations and use medical terminology when appropriate, but also explain complex terms in simple language if needed. 
+Only respond to medical-related queries; do not provide unrelated advice.`
+    };
+
+    const updatedMessages = [systemMessage, ...messages];
+
     const response = await fetch('https://toolkit.rork.com/text/llm/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages: updatedMessages }),
     });
+
     return response.json();
   }
+
 }
 
 export const apiService = new ApiService();

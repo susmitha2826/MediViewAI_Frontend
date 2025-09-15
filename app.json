@@ -40,7 +40,8 @@
     "web": {
       "favicon": "./assets/images/favicon.png",
       "output": "static",
-      "basePath": "/medi-view"
+      "basePath": "/medi-view",
+      "useHash": true
     },
     "plugins": [
       [
