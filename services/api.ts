@@ -175,7 +175,7 @@ async analyzeXray(base64Images: string[] | string, model: any): Promise<Analysis
   const imagesArray = Array.isArray(base64Images) ? base64Images : [base64Images];
 
   // Determine endpoint based on model
-  const endpoint = model === "chexnet" ? "/xray/upload" : "/xray/analyze";
+  const endpoint = model === "openai" ? "/xray/openai" :  model === "chexnet" ? "/xray/chexnet" : model === "cxr" ? "/xray/cxr" :"/xray/analyze";
 
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     method: 'POST',
