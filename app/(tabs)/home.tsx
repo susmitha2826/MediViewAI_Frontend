@@ -147,7 +147,11 @@ export default function HomeScreen() {
     setLaymanResult(null);
     setDoctorLanguage("en");
     setLaymanLanguage("en");
+    setIsAnalyzing(false);
     setResult(null);
+    // setCameraModalVisible(false);
+    setIsTranslatingDoctor(false);
+    setIsTranslatingLayman(false);
   }, []);
 
   const takePhoto = useCallback(async () => {
@@ -248,11 +252,12 @@ export default function HomeScreen() {
         const laymanMatch = fullResult.match(
           /Layman-Friendly Explanation[:*]?\s*([\s\S]*?)(This is a computer-generated response and not a replacement for professional medical advice\.?)/i
         );
-        const laymanText = laymanMatch
+
+        let doctorLevel = doctorMatch ? doctorMatch[1].trim() : null;
+        let laymanFriendly = laymanMatch
           ? laymanMatch[1].trim() + "\n\n" + laymanMatch[2].trim()
           : null;
-        const doctorLevel = doctorMatch ? doctorMatch[1].trim() : "This is a computer-generated response and not a replacement for professional medical advice";
-        const laymanFriendly = laymanText;
+
         setDoctorResult(doctorLevel);
         setLaymanResult(laymanFriendly);
       } else if (response?.msg) {
@@ -316,6 +321,7 @@ export default function HomeScreen() {
     let textToCopy = '';
     if (doctorResult) {
       textToCopy += `Doctor-Level Explanation:\n${markdownToHTML(doctorResult)}\n\n`;
+      console.log(textToCopy, "textToCopytextToCopytextToCopytextToCopytextToCopy")
     }
     if (laymanResult) {
       textToCopy += `Layman-Friendly Explanation:\n${markdownToHTML(laymanResult)}`;
@@ -520,14 +526,37 @@ export default function HomeScreen() {
             <View style={[styles.modernPickerContainer, { backgroundColor: Colors.background.tertiary }]}>
               <Picker
                 selectedValue={selectedModel}
-                style={[styles.modernPicker, { color: Colors.text.primary }]}
+                style={[
+                  styles.modernPicker,
+                  {
+                    color: Colors.text.primary,
+                    backgroundColor: Colors.background.tertiary
+                  }
+                ]}
+                dropdownIconColor={Colors.text.primary}
                 onValueChange={(itemValue) => setSelectedModel(itemValue)}
                 accessibilityLabel="Select analysis model"
               >
-                <Picker.Item label="Rork" value="rork" />
-                <Picker.Item label="GPT-4.1V" value="openai" />
-                <Picker.Item label="CheXNet" value="chexnet" />
-                <Picker.Item label="CXR Analysis" value="cxr" />
+                <Picker.Item
+                  label="Rork"
+                  value="rork"
+                  color={Colors.text.primary}
+                />
+                <Picker.Item
+                  label="GPT-4.1V"
+                  value="openai"
+                  color={Colors.text.primary}
+                />
+                <Picker.Item
+                  label="CheXNet"
+                  value="chexnet"
+                  color={Colors.text.primary}
+                />
+                <Picker.Item
+                  label="CXR Analysis"
+                  value="cxr"
+                  color={Colors.text.primary}
+                />
               </Picker>
             </View>
           </View>
