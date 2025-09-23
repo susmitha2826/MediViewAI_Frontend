@@ -547,11 +547,11 @@ export default function HomeScreen() {
                   value="openai"
                   color={Colors.text.primary}
                 />
-                <Picker.Item
+                {/* <Picker.Item
                   label="CheXNet"
                   value="chexnet"
                   color={Colors.text.primary}
-                />
+                /> */}
                 <Picker.Item
                   label="CXR Analysis"
                   value="cxr"
