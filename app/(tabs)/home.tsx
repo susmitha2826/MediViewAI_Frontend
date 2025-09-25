@@ -55,7 +55,7 @@ export default function HomeScreen() {
   ];
   const [index, setIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [selectedModel, setSelectedModel] = useState('rork');
+  const [selectedModel, setSelectedModel] = useState('openai');
 
   // Animated subtitle rotation
   useEffect(() => {
