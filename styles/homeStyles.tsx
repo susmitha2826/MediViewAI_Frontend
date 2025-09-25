@@ -47,7 +47,7 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   titleContainer: {
-    alignItems: 'center', // center title & animated text
+    alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 20,
   },
@@ -120,6 +120,26 @@ export const styles = StyleSheet.create({
   uploadOptionsGrid: {
     flexDirection: isWeb ? 'row' : 'column',
     gap: 16,
+  },
+  uploadDropZone: {
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#3b82f6',
+    backgroundColor: 'rgba(59, 130, 246, 0.02)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 200,
+  },
+  uploadDropZoneActive: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderColor: '#2563eb',
+  },
+  uploadDropText: {
+    fontSize: 14,
+    marginTop: 16,
+    textAlign: 'center',
   },
   modernUploadButton: {
     flex: isWeb ? 1 : undefined,
@@ -520,7 +540,7 @@ export const styles = StyleSheet.create({
     zIndex: 999,
   },
 
-  // Legacy styles for compatibility (keeping existing ones that might be used elsewhere)
+  // Legacy styles for compatibility
   header: { alignItems: 'center', marginBottom: 20 },
   title: { fontSize: 32, fontWeight: 'bold', marginBottom: 8 },
   subtitle: { fontSize: 16, textAlign: 'center' },

@@ -1,6 +1,6 @@
 import ChatScreen from '../../utils/chat';
 import { X, MessageCircle, Camera as CameraIcon, Upload, FileImage, AlertTriangle, Zap, Volume2, Languages, StopCircle, FileText, Bot, Copy, Sparkles } from 'lucide-react-native';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, ActivityIndicator, Animated } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Image, Alert, ScrollView, ActivityIndicator, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
@@ -38,7 +38,9 @@ export default function HomeScreen() {
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
   const [cameraPhotos, setCameraPhotos] = useState<string[]>([]);
   const [permission, requestPermission] = useCameraPermissions();
+  const [dragActive, setDragActive] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+  const dropZoneRef = useRef<View>(null);
   const MAX_PHOTOS = 5;
 
   const subtitles = [
@@ -78,6 +80,88 @@ export default function HomeScreen() {
     const interval = setInterval(checkSpeech, 500);
     return () => clearInterval(interval);
   }, []);
+
+  // Clear results
+  const clearResults = useCallback(() => {
+    setDoctorResult(null);
+    setLaymanResult(null);
+    setDoctorLanguage('en');
+    setLaymanLanguage('en');
+    setResult(null);
+    setIsDoctorSpeaking(false);
+    setIsLaymanSpeaking(false);
+  }, []);
+
+  // Handle drag and drop events
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handlePaste = async (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = reader.result as string;
+              setSelectedImages(prev => [...prev, base64].filter(img => !prev.includes(img)));
+              clearResults();
+            };
+            reader.readAsDataURL(blob);
+          }
+        }
+      }
+    };
+
+    const handleDragOver = (event: DragEvent) => {
+      event.preventDefault();
+      setDragActive(true);
+    };
+
+    const handleDragLeave = (event: DragEvent) => {
+      event.preventDefault();
+      setDragActive(false);
+    };
+
+    const handleDrop = (event: DragEvent) => {
+      event.preventDefault();
+      setDragActive(false);
+      const files = event.dataTransfer?.files;
+      if (!files) return;
+      for (const file of Array.from(files)) {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            setSelectedImages(prev => [...prev, base64].filter(img => !prev.includes(img)));
+            clearResults();
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    };
+
+    const dropZone = dropZoneRef.current;
+    if (dropZone) {
+      // @ts-ignore: Only works on web, dropZone is a View but on web it's a div
+      const element = dropZone as unknown as HTMLElement;
+      element.addEventListener('dragover', handleDragOver);
+      element.addEventListener('dragleave', handleDragLeave);
+      element.addEventListener('drop', handleDrop);
+      element.addEventListener('paste', handlePaste);
+      return () => {
+        element.removeEventListener('dragover', handleDragOver);
+        element.removeEventListener('dragleave', handleDragLeave);
+        element.removeEventListener('drop', handleDrop);
+        element.removeEventListener('paste', handlePaste);
+      };
+    }
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [clearResults]);
 
   const toggleDoctorSpeak = useCallback(async (text: string, language: string) => {
     try {
@@ -132,7 +216,22 @@ export default function HomeScreen() {
       setSelectedImages(prev => [...prev, ...base64Array.filter(img => !prev.includes(img))]);
       clearResults();
     }
-  }, []);
+  }, [clearResults]);
+
+  const pasteImage = useCallback(async () => {
+    try {
+      const clipboardImage = await Clipboard.getImageAsync({ format: 'jpeg' });
+      if (clipboardImage?.data) {
+        setSelectedImages(prev => [...prev, `data:image/jpeg;base64,${clipboardImage.data}`].filter(img => !prev.includes(img)));
+        clearResults();
+      } else {
+        Alert.alert('No Image', 'No image found in clipboard.');
+      }
+    } catch (error) {
+      console.error('Paste image error:', error);
+      Alert.alert('Error', 'Failed to paste image from clipboard.');
+    }
+  }, [clearResults]);
 
   const resetAnalysis = useCallback(() => {
     try {
@@ -149,7 +248,6 @@ export default function HomeScreen() {
     setLaymanLanguage("en");
     setIsAnalyzing(false);
     setResult(null);
-    // setCameraModalVisible(false);
     setIsTranslatingDoctor(false);
     setIsTranslatingLayman(false);
   }, []);
@@ -189,16 +287,6 @@ export default function HomeScreen() {
       }
     }
   }, [cameraPhotos]);
-
-  const clearResults = useCallback(() => {
-    setDoctorResult(null);
-    setLaymanResult(null);
-    setDoctorLanguage('en');
-    setLaymanLanguage('en');
-    setResult(null);
-    setIsDoctorSpeaking(false);
-    setIsLaymanSpeaking(false);
-  }, []);
 
   const finishCapture = useCallback(() => {
     if (cameraPhotos.length > 0) {
@@ -321,7 +409,6 @@ export default function HomeScreen() {
     let textToCopy = '';
     if (doctorResult) {
       textToCopy += `Doctor-Level Explanation:\n${markdownToHTML(doctorResult)}\n\n`;
-      console.log(textToCopy, "textToCopytextToCopytextToCopytextToCopytextToCopy")
     }
     if (laymanResult) {
       textToCopy += `Layman-Friendly Explanation:\n${markdownToHTML(laymanResult)}`;
@@ -343,9 +430,6 @@ export default function HomeScreen() {
         {/* Modern Header */}
         <View style={styles.modernHeader}>
           <View style={styles.logoContainer}>
-            {/* <View style={styles.logoIcon}>
-              <Sparkles color={Colors.primary} size={28} />
-            </View> */}
             <View style={styles.titleContainer}>
               <Text style={[styles.appTitle, { color: Colors.text.primary }]}>
                 MediView AI
@@ -417,34 +501,55 @@ export default function HomeScreen() {
               </ScrollView>
             </View>
           ) : (
-            <View style={styles.uploadOptionsGrid}>
-              <TouchableOpacity
-                style={[styles.modernUploadButton, { borderColor: Colors.primary }]}
-                onPress={takePhoto}
-                accessibilityLabel="Take photo with camera"
-              >
-                <View style={[styles.uploadIconContainer, { backgroundColor: Colors.primary }]}>
-                  <CameraIcon color="#fff" size={24} />
-                </View>
-                <Text style={[styles.uploadOptionTitle, { color: Colors.text.primary }]}>Camera</Text>
-                <Text style={[styles.uploadOptionSubtitle, { color: Colors.text.secondary }]}>
-                  Take photo directly
-                </Text>
-              </TouchableOpacity>
+            <View style={[styles.uploadDropZone, dragActive && styles.uploadDropZoneActive, { borderColor: Colors.primary }]} ref={dropZoneRef}>
+              <View style={styles.uploadOptionsGrid}>
+                <TouchableOpacity
+                  style={[styles.modernUploadButton, { borderColor: Colors.primary }]}
+                  onPress={takePhoto}
+                  accessibilityLabel="Take photo with camera"
+                >
+                  <View style={[styles.uploadIconContainer, { backgroundColor: Colors.primary }]}>
+                    <CameraIcon color="#fff" size={24} />
+                  </View>
+                  <Text style={[styles.uploadOptionTitle, { color: Colors.text.primary }]}>Camera</Text>
+                  <Text style={[styles.uploadOptionSubtitle, { color: Colors.text.secondary }]}>
+                    Take photo directly
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.modernUploadButton, { borderColor: Colors.primary }]}
-                onPress={pickImageFromGallery}
-                accessibilityLabel="Choose from gallery"
-              >
-                <View style={[styles.uploadIconContainer, { backgroundColor: Colors.primary }]}>
-                  <FileImage color="#fff" size={24} />
-                </View>
-                <Text style={[styles.uploadOptionTitle, { color: Colors.text.primary }]}>Gallery</Text>
-                <Text style={[styles.uploadOptionSubtitle, { color: Colors.text.secondary }]}>
-                  Choose from device
+                <TouchableOpacity
+                  style={[styles.modernUploadButton, { borderColor: Colors.primary }]}
+                  onPress={pickImageFromGallery}
+                  accessibilityLabel="Choose from gallery"
+                >
+                  <View style={[styles.uploadIconContainer, { backgroundColor: Colors.primary }]}>
+                    <FileImage color="#fff" size={24} />
+                  </View>
+                  <Text style={[styles.uploadOptionTitle, { color: Colors.text.primary }]}>Gallery</Text>
+                  <Text style={[styles.uploadOptionSubtitle, { color: Colors.text.secondary }]}>
+                    Choose from device
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modernUploadButton, { borderColor: Colors.primary }]}
+                  onPress={pasteImage}
+                  accessibilityLabel="Paste image from clipboard"
+                >
+                  <View style={[styles.uploadIconContainer, { backgroundColor: Colors.primary }]}>
+                    <Copy color="#fff" size={24} />
+                  </View>
+                  <Text style={[styles.uploadOptionTitle, { color: Colors.text.primary }]}>Paste</Text>
+                  <Text style={[styles.uploadOptionSubtitle, { color: Colors.text.secondary }]}>
+                    Paste image from clipboard
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {Platform.OS === 'web' && (
+                <Text style={[styles.uploadDropText, { color: Colors.text.secondary }]}>
+                  {dragActive ? 'Drop images here' : 'Drag and drop images here'}
                 </Text>
-              </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -545,16 +650,6 @@ export default function HomeScreen() {
                 <Picker.Item
                   label="GPT-4.1V"
                   value="openai"
-                  color={Colors.text.primary}
-                />
-                {/* <Picker.Item
-                  label="CheXNet"
-                  value="chexnet"
-                  color={Colors.text.primary}
-                /> */}
-                <Picker.Item
-                  label="CXR Analysis"
-                  value="cxr"
                   color={Colors.text.primary}
                 />
               </Picker>
